@@ -1370,7 +1370,8 @@ Respond in plain text containing a valid JSON object. Do not include markdown co
 }`;
 
     try {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+      // Updated to use stable v1 endpoint
+      const endpoint = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -2253,7 +2254,6 @@ Respond in plain text containing a valid JSON object. Do not include markdown co
 
     document.getElementById('entry-notes').value = '';
     renderHistoryTable();
-    alert("🎉 Daily log successfully submitted and saved!");
   });
 
   /* Active Dashboard History Table */
