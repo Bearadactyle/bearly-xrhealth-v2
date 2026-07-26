@@ -1351,7 +1351,7 @@ Instructions for Guided Wizard Mode:
 3. SAFETY CHECK: If ALL categories and widgets are now filled (or the user says "submit" / "log today"), you MUST ask for user confirmation first. Set "autoSubmitLog": false and say in "reply": "All categories are 100% complete! Do you want me to submit your daily log now?"
 4. If the user explicitly confirms with "yes" or "submit it", set "autoSubmitLog": true and say in "reply": "Submitting your daily log now!"
 
-Respond strictly in valid JSON format. Do not include markdown code ticks like \`\`\`json. Return only the raw JSON object:
+Respond in plain text containing a valid JSON object. Do not include markdown code block syntax (like \`\`\`json). Return only the JSON object with these keys:
 {
   "reply": "Conversational response spoken aloud via text-to-speech to the user",
   "logUpdates": { "widget_id_or_label": "value" },
@@ -1375,8 +1375,7 @@ Respond strictly in valid JSON format. Do not include markdown code ticks like \
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: systemPrompt }] }],
-          generationConfig: { responseMimeType: "application/json" }
+          contents: [{ parts: [{ text: systemPrompt }] }]
         })
       });
 
@@ -1389,11 +1388,16 @@ Respond strictly in valid JSON format. Do not include markdown code ticks like \
       const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!rawText) throw new Error("Empty response from AI.");
 
-      // Robustly clean markdown code ticks if any slip through
-      const cleanedText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-      const aiResponse = JSON.parse(cleanedText);
+      // Safely extract JSON even if model wraps it in markdown code blocks
+      let jsonString = rawText.trim();
+      const match = jsonString.match(/\{[\s\S]*\}/);
+      if (match) {
+        jsonString = match[0];
+      }
 
+      const aiResponse = JSON.parse(jsonString);
       const confirmationReply = aiResponse.reply || 'Command completed!';
+      
       statusEl.innerText = `✅ ${confirmationReply}`;
       speakConfirmation(confirmationReply);
 
@@ -2249,6 +2253,7 @@ Respond strictly in valid JSON format. Do not include markdown code ticks like \
 
     document.getElementById('entry-notes').value = '';
     renderHistoryTable();
+    alert("🎉 Daily log successfully submitted and saved!");
   });
 
   /* Active Dashboard History Table */
