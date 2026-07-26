@@ -121,22 +121,12 @@
     }
     .cat-actions {
       display: flex;
-      gap: 6px;
+      gap: 4px;
       align-items: center;
       flex-wrap: wrap;
     }
-    .cat-drag-handle {
-      cursor: grab;
-      font-size: 0.85rem;
-      background: #334155;
-      padding: 4px 10px;
-      border-radius: 6px;
-      color: var(--accent-color);
-      user-select: none;
-      font-weight: bold;
-    }
 
-    /* Sub-Widget Drag & Drop Container */
+    /* Sub-Widget Container */
     .widget-item {
       background: rgba(15, 23, 42, 0.6);
       border: 1px solid rgba(51, 65, 85, 0.6);
@@ -161,17 +151,8 @@
     .widget-actions {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 4px;
       flex-shrink: 0;
-    }
-    .sub-drag-handle {
-      cursor: grab;
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      user-select: none;
-      padding: 2px 6px;
-      background: #0f172a;
-      border-radius: 4px;
     }
 
     /* Form Controls */
@@ -364,7 +345,7 @@
 
     <div class="preset-card" onclick="createCustomNamedPreset()">
       <strong>✏️ Build From Scratch (Custom)</strong>
-      <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--text-muted);">Name your own custom dashboard and add drag-and-drop category groups.</p>
+      <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--text-muted);">Name your own custom dashboard and add category groups.</p>
     </div>
 
     <div style="margin-top: 24px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center;">
@@ -814,9 +795,6 @@
   let currentModalView = 'create';
   let currentItemModalView = 'create';
   let targetCatForNewWidget = null;
-  let dragCatIndex = null;
-  let dragWidgetCatIndex = null;
-  let dragWidgetIndex = null;
 
   // WebRTC PeerJS Wi-Fi Sync State
   let peer = null;
@@ -1631,6 +1609,26 @@ Respond strictly in this JSON format:
     });
   }
 
+  /* Reordering Functions (Universal for Touch & Desktop) */
+  function moveCategory(catIndex, direction) {
+    const newIndex = catIndex + direction;
+    if (newIndex < 0 || newIndex >= activeDashboard.schema.length) return;
+    const moved = activeDashboard.schema.splice(catIndex, 1)[0];
+    activeDashboard.schema.splice(newIndex, 0, moved);
+    localStorage.setItem('active_dashboard', JSON.stringify(activeDashboard));
+    renderMainForm();
+  }
+
+  function moveWidget(catIndex, widgetIndex, direction) {
+    const widgets = activeDashboard.schema[catIndex].widgets;
+    const newIndex = widgetIndex + direction;
+    if (newIndex < 0 || newIndex >= widgets.length) return;
+    const moved = widgets.splice(widgetIndex, 1)[0];
+    widgets.splice(newIndex, 0, moved);
+    localStorage.setItem('active_dashboard', JSON.stringify(activeDashboard));
+    renderMainForm();
+  }
+
   /* Modal Functions */
   function openAddModal() {
     setModalView('create');
@@ -2007,53 +2005,6 @@ Respond strictly in this JSON format:
     }
   }
 
-  /* Category Drag & Drop Handlers */
-  function handleCatDragStart(e, catIndex) {
-    dragCatIndex = catIndex;
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('type', 'category');
-  }
-
-  function handleCatDragOver(e) {
-    if (e.preventDefault) e.preventDefault();
-    return false;
-  }
-
-  function handleCatDrop(e, targetCatIndex) {
-    if (e.stopPropagation) e.stopPropagation();
-    if (e.dataTransfer.getData('type') === 'category' && dragCatIndex !== null && dragCatIndex !== targetCatIndex) {
-      const moved = activeDashboard.schema.splice(dragCatIndex, 1)[0];
-      activeDashboard.schema.splice(targetCatIndex, 0, moved);
-      localStorage.setItem('active_dashboard', JSON.stringify(activeDashboard));
-      renderMainForm();
-    }
-    dragCatIndex = null;
-    return false;
-  }
-
-  /* Sub-Widget Drag & Drop Handlers */
-  function handleWidgetDragStart(e, catIndex, widgetIndex) {
-    e.stopPropagation();
-    dragWidgetCatIndex = catIndex;
-    dragWidgetIndex = widgetIndex;
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('type', 'widget');
-  }
-
-  function handleWidgetDrop(e, catIndex, targetWidgetIndex) {
-    if (e.stopPropagation) e.stopPropagation();
-    if (e.dataTransfer.getData('type') === 'widget' && dragWidgetCatIndex === catIndex && dragWidgetIndex !== null && dragWidgetIndex !== targetWidgetIndex) {
-      const widgetsList = activeDashboard.schema[catIndex].widgets;
-      const moved = widgetsList.splice(dragWidgetIndex, 1)[0];
-      widgetsList.splice(targetWidgetIndex, 0, moved);
-      localStorage.setItem('active_dashboard', JSON.stringify(activeDashboard));
-      renderMainForm();
-    }
-    dragWidgetCatIndex = null;
-    dragWidgetIndex = null;
-    return false;
-  }
-
   /* Render Main Form */
   function renderMainForm() {
     if (!activeDashboard) return;
@@ -2080,8 +2031,6 @@ Respond strictly in this JSON format:
     activeDashboard.schema.forEach((cat, catIndex) => {
       const card = document.createElement('div');
       card.className = 'category-card';
-      card.setAttribute('ondragover', 'handleCatDragOver(event)');
-      card.setAttribute('ondrop', `handleCatDrop(event, ${catIndex})`);
 
       let widgetsHtml = '';
       cat.widgets.forEach((w, wIndex) => {
@@ -2108,16 +2057,14 @@ Respond strictly in this JSON format:
         }
 
         widgetsHtml += `
-          <div class="widget-item" draggable="true" 
-               ondragstart="handleWidgetDragStart(event, ${catIndex}, ${wIndex})"
-               ondragover="handleCatDragOver(event)"
-               ondrop="handleWidgetDrop(event, ${catIndex}, ${wIndex})">
+          <div class="widget-item">
             <div class="widget-header">
               <strong>${w.label}</strong>
               <div class="widget-actions">
-                <button type="button" class="btn-success" style="padding:3px 8px; font-size:0.75rem;" onclick="saveWidgetToLibrary(event, ${catIndex}, ${wIndex})" title="Save Widget to Library">💾 Save</button>
-                <button type="button" class="btn-danger" style="padding:3px 8px; font-size:0.75rem;" onclick="confirmDeleteWidget(event, ${catIndex}, ${wIndex})" title="Delete item">🗑️</button>
-                <span class="sub-drag-handle" title="Click & drag to reorder">⋮⋮</span>
+                <button type="button" style="padding:3px 6px; font-size:0.75rem;" onclick="moveWidget(${catIndex}, ${wIndex}, -1)" title="Move Up">⬆️</button>
+                <button type="button" style="padding:3px 6px; font-size:0.75rem;" onclick="moveWidget(${catIndex}, ${wIndex}, 1)" title="Move Down">⬇️</button>
+                <button type="button" class="btn-success" style="padding:3px 8px; font-size:0.75rem;" onclick="saveWidgetToLibrary(event, ${catIndex}, ${wIndex})" title="Save Widget">💾 Save</button>
+                <button type="button" class="btn-danger" style="padding:3px 8px; font-size:0.75rem;" onclick="confirmDeleteWidget(event, ${catIndex}, ${wIndex})" title="Delete">🗑️</button>
               </div>
             </div>
             ${inputHtml}
@@ -2129,10 +2076,11 @@ Respond strictly in this JSON format:
         <div class="category-header">
           <strong style="font-size: 1.05rem; color: var(--accent-color);">${cat.title}</strong>
           <div class="cat-actions">
-            <button type="button" class="btn-success" onclick="openAddItemModal(${catIndex})" title="Add Item to Group">➕ Add Item</button>
-            <button type="button" class="btn-success" onclick="saveCategoryToLibrary(${catIndex})" title="Save Category to Library">💾 Save Category</button>
-            <button type="button" class="btn-danger" onclick="deleteCategory(${catIndex})" title="Delete Group">🗑️ Delete Group</button>
-            <span class="cat-drag-handle" draggable="true" ondragstart="handleCatDragStart(event, ${catIndex})">☰ Drag</span>
+            <button type="button" style="padding:3px 6px; font-size:0.75rem;" onclick="moveCategory(${catIndex}, -1)" title="Move Category Up">⬆️</button>
+            <button type="button" style="padding:3px 6px; font-size:0.75rem;" onclick="moveCategory(${catIndex}, 1)" title="Move Category Down">⬇️</button>
+            <button type="button" class="btn-success" onclick="openAddItemModal(${catIndex})" title="Add Item">➕ Add</button>
+            <button type="button" class="btn-success" onclick="saveCategoryToLibrary(${catIndex})" title="Save Category">💾 Save</button>
+            <button type="button" class="btn-danger" onclick="deleteCategory(${catIndex})" title="Delete Group">🗑️ Delete</button>
           </div>
         </div>
         ${widgetsHtml}
