@@ -1367,7 +1367,8 @@ Respond strictly in this JSON format:
 }`;
 
     try {
-      const endpoint = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+      // Updated to use the stable, active Gemini 3.5 Flash endpoint
+      const endpoint = `https://generativelanguage.googleapis.com/v1/models/gemini-3.5-flash:generateContent?key=${apiKey}`;
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
