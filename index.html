@@ -133,7 +133,9 @@
       padding: 16px;
       margin-bottom: 20px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      cursor: grab;
     }
+    .category-card:active { cursor: grabbing; }
     .category-header {
       display: flex;
       justify-content: space-between;
@@ -159,7 +161,9 @@
       padding: 12px;
       margin-bottom: 12px;
       position: relative;
+      cursor: grab;
     }
+    .widget-item:active { cursor: grabbing; }
     .widget-header {
       display: flex;
       justify-content: space-between;
@@ -383,7 +387,6 @@
       </div>
       <div style="display: flex; gap: 6px; flex-wrap: wrap;">
         <button type="button" onclick="if(activeDashboard) showScreen('main-screen')">← Active App</button>
-        <button type="button" onclick="showScreen('about-screen')">ℹ️ About This Project</button>
       </div>
     </div>
 
@@ -393,6 +396,11 @@
       <button type="button" onclick="backupDataJSON()" title="Export full backup file to sync to other devices">📤 Backup Data</button>
       <button type="button" onclick="document.getElementById('json-restore-input').click()" title="Import backup file from another device">📥 Restore Data</button>
       <button type="button" class="btn-danger" onclick="factoryResetApp()" title="Wipe all app data and start 100% fresh">⚠️ Clear All Data</button>
+    </div>
+
+    <!-- Dedicated Quick-Access About Section -->
+    <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-color); text-align: center;">
+      <button type="button" onclick="showScreen('about-screen')" style="width: 100%; background: #1e293b; border: 1px solid var(--border-color); color: var(--accent-color); padding: 10px; font-weight: 600;">ℹ️ About BEARLY.xrhealth</button>
     </div>
   </div>
 
@@ -592,7 +600,7 @@
       <button type="button" class="primary" onclick="openPrivateLogView()">🔒 Individual Logs</button>
       <button type="button" class="btn-success" onclick="openWifiSyncModal()">📶 Wi-Fi Sync</button>
       <button type="button" onclick="backupDataJSON()">📤 Backup Data</button>
-      <button type="button" onclick="document.getElementById('json-restore-input').click()">📥 Restore Data</button>
+      <button type="button" onclick="document.getElementById('json-restore-input').click()" title="Import backup file from another device">📥 Restore Data</button>
       <button type="button" onclick="refreshApp()">🔄 Refresh</button>
     </div>
 
@@ -843,6 +851,9 @@
   let currentModalView = 'create';
   let currentItemModalView = 'create';
   let targetCatForNewWidget = null;
+  let dragCatIndex = null;
+  let dragWidgetCatIndex = null;
+  let dragWidgetIndex = null;
 
   // WebRTC PeerJS Wi-Fi Sync State
   let peer = null;
@@ -1356,7 +1367,7 @@ Respond strictly in this JSON format:
 }`;
 
     try {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`;
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1657,7 +1668,7 @@ Respond strictly in this JSON format:
     });
   }
 
-  /* Reordering Functions (Universal for Touch & Desktop) */
+  /* Reordering Functions: Both Drag-and-Drop AND Tap Arrows */
   function moveCategory(catIndex, direction) {
     const newIndex = catIndex + direction;
     if (newIndex < 0 || newIndex >= activeDashboard.schema.length) return;
@@ -1675,6 +1686,52 @@ Respond strictly in this JSON format:
     widgets.splice(newIndex, 0, moved);
     localStorage.setItem('active_dashboard', JSON.stringify(activeDashboard));
     renderMainForm();
+  }
+
+  // Desktop Drag & Drop Handlers
+  function handleCatDragStart(e, catIndex) {
+    dragCatIndex = catIndex;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('type', 'category');
+  }
+
+  function handleCatDragOver(e) {
+    if (e.preventDefault) e.preventDefault();
+    return false;
+  }
+
+  function handleCatDrop(e, targetCatIndex) {
+    if (e.stopPropagation) e.stopPropagation();
+    if (e.dataTransfer.getData('type') === 'category' && dragCatIndex !== null && dragCatIndex !== targetCatIndex) {
+      const moved = activeDashboard.schema.splice(dragCatIndex, 1)[0];
+      activeDashboard.schema.splice(targetCatIndex, 0, moved);
+      localStorage.setItem('active_dashboard', JSON.stringify(activeDashboard));
+      renderMainForm();
+    }
+    dragCatIndex = null;
+    return false;
+  }
+
+  function handleWidgetDragStart(e, catIndex, widgetIndex) {
+    e.stopPropagation();
+    dragWidgetCatIndex = catIndex;
+    dragWidgetIndex = widgetIndex;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('type', 'widget');
+  }
+
+  function handleWidgetDrop(e, catIndex, targetWidgetIndex) {
+    if (e.stopPropagation) e.stopPropagation();
+    if (e.dataTransfer.getData('type') === 'widget' && dragWidgetCatIndex === catIndex && dragWidgetIndex !== null && dragWidgetIndex !== targetWidgetIndex) {
+      const widgetsList = activeDashboard.schema[catIndex].widgets;
+      const moved = widgetsList.splice(dragWidgetIndex, 1)[0];
+      widgetsList.splice(targetWidgetIndex, 0, moved);
+      localStorage.setItem('active_dashboard', JSON.stringify(activeDashboard));
+      renderMainForm();
+    }
+    dragWidgetCatIndex = null;
+    dragWidgetIndex = null;
+    return false;
   }
 
   /* Modal Functions */
@@ -1814,12 +1871,12 @@ Respond strictly in this JSON format:
       document.getElementById('view-create').classList.remove('hidden');
       document.getElementById('view-library').classList.add('hidden');
       document.getElementById('modal-heading').innerText = 'Build Category Group';
-      document.getElementById('btn-toggle-view').innerText = '📚 Choose From Category Library';
+      document.getElementById('btn-toggle-view').innerText = '✏️ Build New Group';
     } else {
       document.getElementById('view-create').classList.add('hidden');
       document.getElementById('view-library').classList.remove('hidden');
       document.getElementById('modal-heading').innerText = 'Category Library';
-      document.getElementById('btn-toggle-view').innerText = '✏️ Build New Group';
+      document.getElementById('btn-toggle-view').innerText = '📚 Choose From Category Library';
       renderLibraryList();
     }
   }
@@ -2053,7 +2110,7 @@ Respond strictly in this JSON format:
     }
   }
 
-  /* Render Main Form */
+  /* Render Main Form with Both Drag-and-Drop and Tap Arrows */
   function renderMainForm() {
     if (!activeDashboard) return;
 
@@ -2079,6 +2136,10 @@ Respond strictly in this JSON format:
     activeDashboard.schema.forEach((cat, catIndex) => {
       const card = document.createElement('div');
       card.className = 'category-card';
+      card.setAttribute('draggable', 'true');
+      card.setAttribute('ondragstart', `handleCatDragStart(event, ${catIndex})`);
+      card.setAttribute('ondragover', 'handleCatDragOver(event)');
+      card.setAttribute('ondrop', `handleCatDrop(event, ${catIndex})`);
 
       let widgetsHtml = '';
       cat.widgets.forEach((w, wIndex) => {
@@ -2105,7 +2166,10 @@ Respond strictly in this JSON format:
         }
 
         widgetsHtml += `
-          <div class="widget-item">
+          <div class="widget-item" draggable="true" 
+               ondragstart="handleWidgetDragStart(event, ${catIndex}, ${wIndex})"
+               ondragover="handleCatDragOver(event)"
+               ondrop="handleWidgetDrop(event, ${catIndex}, ${wIndex})">
             <div class="widget-header">
               <strong>${w.label}</strong>
               <div class="widget-actions">
