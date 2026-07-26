@@ -1370,6 +1370,7 @@ Respond strictly in this JSON format:
 }`;
 
     try {
+      // Using standard generative model endpoint URL format
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
       const res = await fetch(endpoint, {
         method: "POST",
@@ -2220,14 +2221,14 @@ Respond strictly in this JSON format:
     };
 
     activeDashboard.schema.forEach(cat => {
-      cat.widgets.forEach(w => {
+      cat.widgets.widgets?.forEach ? cat.widgets.forEach(w => {
         const el = document.getElementById(`field-${w.id}`);
         if (w.type === 'toggle') {
-          entry[`${cat.title} - ${w.label}`] = el.checked ? 'Yes' : 'No';
+          entry[`${cat.title} - ${w.label}`] = el && el.checked ? 'Yes' : 'No';
         } else if (el) {
           entry[`${cat.title} - ${w.label}`] = el.value;
         }
-      });
+      }) : null;
     });
 
     entry['General Summary'] = document.getElementById('entry-notes').value;
@@ -2244,7 +2245,6 @@ Respond strictly in this JSON format:
 
     document.getElementById('entry-notes').value = '';
     renderHistoryTable();
-    alert("🎉 Daily log successfully submitted and saved!");
   });
 
   /* Active Dashboard History Table */
