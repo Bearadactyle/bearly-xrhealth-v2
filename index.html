@@ -562,7 +562,7 @@
       </div>
 
       <div style="margin-bottom:10px;">
-        <textarea id="voice-transcript-text" rows="2" placeholder="Speak or type a command... e.g. 'Help me fill out my missing categories one by one'"></textarea>
+        <textarea id="voice-transcript-text" rows="2" placeholder="Speak or type a command... e.g. 'Set spinal stiffness to 7 and add a widget for hand pain'"></textarea>
       </div>
 
       <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:space-between; align-items:center;">
@@ -1225,7 +1225,7 @@
     renderMainForm();
   }
 
-  /* Voice Assistant & Gemini AI Logic */
+  /* Voice Assistant & Gemini AI Logic (Stable Multi-Intent Architecture) */
   function toggleVoiceAssistant() {
     const panel = document.getElementById('voice-panel');
     panel.classList.toggle('hidden');
@@ -1322,39 +1322,38 @@
     const statusEl = document.getElementById('voice-status-msg');
     statusEl.innerText = "⚡ Thinking...";
 
-    // Gather live form values to check completion status
-    const currentFormValues = {};
-    if (activeDashboard) {
-      activeDashboard.schema.forEach(cat => {
-        cat.widgets.forEach(w => {
-          const el = document.getElementById(`field-${w.id}`);
-          if (el) {
-            currentFormValues[w.label] = w.type === 'toggle' ? (el.checked ? 'Yes' : 'No') : el.value;
-          }
-        });
-      });
-    }
+    const currentDashboardSchema = activeDashboard ? activeDashboard.schema : [];
 
     const systemPrompt = `
-You are the AI Health Assistant and Interviewer for BEARLY.xrhealth.
-Your job is to guide the user through completing their daily health log.
+You are the AI Voice Assistant for BEARLY.xrhealth tracker app.
+Analyze the user's command and generate JSON instructions.
 
 Current Active Dashboard Title: "${activeDashboard ? activeDashboard.title : 'None'}"
-Current Dashboard Schema & Live Field Values:
-${JSON.stringify({ schema: activeDashboard ? activeDashboard.schema : [], currentValues: currentFormValues }, null, 2)}
+Current Dashboard Categories & Widgets Schema:
+${JSON.stringify(currentDashboardSchema, null, 2)}
 
-User's Spoken Command / Input: "${commandText}"
+User's Spoken Command: "${commandText}"
 
-Instructions for Guided Wizard Mode:
-1. If the user asks to fill out missing categories or start their daily log, inspect "currentValues". Identify unfilled metrics and ask the user about the next item in the "reply" property.
-2. If the user provides values for metrics, update them in "logUpdates".
-3. SAFETY CHECK: If ALL categories and widgets are now filled (or the user says "submit" / "log today"), you MUST ask for user confirmation first. Set "autoSubmitLog": false and say in "reply": "All categories are 100% complete! Do you want me to submit your daily log now?"
-4. If the user explicitly confirms with "yes" or "submit it", set "autoSubmitLog": true and say in "reply": "Submitting your daily log now!"
+Instructions:
+1. Determine intent:
+   - "log_entry": Updates metric values, text notes, or submits log.
+   - "add_category": Creates a new category block with widgets.
+   - "add_widget": Adds a widget to an existing or new category.
 
-Respond in plain text containing a valid JSON object. Do not include markdown code block syntax (like \`\`\`json). Return only the JSON object with these keys:
+2. Smart Inference:
+   - If user doesn't specify widget type (e.g., "Track water intake"), choose best type:
+     * "slider": intensity or 1-10 levels
+     * "toggle": yes/no, medicine, stretches
+     * "dropdown": quality ratings (e.g. Good, Fair, Poor)
+     * "textarea": journal or notes
+
+Respond strictly in this JSON format:
 {
-  "reply": "Conversational response spoken aloud via text-to-speech to the user",
-  "logUpdates": { "widget_id_or_label": "value" },
+  "action": "log_entry" | "add_category" | "add_widget",
+  "reply": "Short natural summary of what was completed",
+  "logUpdates": { "widget_id_str": "value" },
+  "summaryNotes": "General summary text if given",
+  "autoSubmitLog": boolean,
   "newCategory": {
     "title": "Category Name",
     "widgets": [
@@ -1364,13 +1363,10 @@ Respond in plain text containing a valid JSON object. Do not include markdown co
   "newWidget": {
     "targetCategoryTitle": "Category Name",
     "widget": { "type": "slider|toggle|dropdown|textarea", "label": "Label", "options": ["Good", "Fair", "Poor"] }
-  },
-  "summaryNotes": "General notes if given",
-  "autoSubmitLog": boolean
+  }
 }`;
 
     try {
-      // Updated to use stable v1 endpoint
       const endpoint = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
       const res = await fetch(endpoint, {
         method: "POST",
@@ -1412,11 +1408,58 @@ Respond in plain text containing a valid JSON object. Do not include markdown co
   }
 
   function executeAiAction(ai) {
-    if (!ai) return;
-    let needsRerender = false;
+    if (!ai || !ai.action) return;
 
-    if (ai.newCategory) {
-      if (!activeDashboard) createCustomNamedPreset();
+    if (ai.action === 'log_entry') {
+      if (!activeDashboard) {
+        alert("Please select or load a dashboard before logging.");
+        return;
+      }
+
+      if (ai.logUpdates) {
+        Object.entries(ai.logUpdates).forEach(([widgetId, val]) => {
+          let field = document.getElementById(`field-${widgetId}`);
+          if (!field) {
+            for (let cat of activeDashboard.schema) {
+              for (let w of cat.widgets) {
+                if (w.label.toLowerCase().includes(widgetId.toLowerCase()) || widgetId.toLowerCase().includes(w.label.toLowerCase())) {
+                  field = document.getElementById(`field-${w.id}`);
+                  break;
+                }
+              }
+              if (field) break;
+            }
+          }
+          if (field) {
+            if (field.type === 'checkbox') {
+              field.checked = Boolean(val);
+            } else if (field.type === 'range') {
+              field.value = val;
+              const badge = document.getElementById(`val-${field.id.replace('field-', '')}`);
+              if (badge) badge.innerText = `${val} / 10`;
+            } else {
+              field.value = val;
+            }
+          }
+        });
+      }
+
+      if (ai.summaryNotes) {
+        const notesEl = document.getElementById('entry-notes');
+        if (notesEl) notesEl.value = ai.summaryNotes;
+      }
+
+      if (ai.autoSubmitLog) {
+        setTimeout(() => {
+          document.getElementById('tracker-form').dispatchEvent(new Event('submit'));
+        }, 300);
+      }
+
+    } else if (ai.action === 'add_category' && ai.newCategory) {
+      if (!activeDashboard) {
+        createCustomNamedPreset();
+      }
+
       const newCat = {
         id: 'cat_' + Date.now(),
         title: ai.newCategory.title || 'New Category',
@@ -1427,18 +1470,17 @@ Respond in plain text containing a valid JSON object. Do not include markdown co
           options: w.options || ['Good', 'Fair', 'Poor']
         }))
       };
-      activeDashboard.schema.push(newCat);
-      needsRerender = true;
-    }
 
-    if (ai.newWidget) {
-      if (!activeDashboard) createCustomNamedPreset();
+      activeDashboard.schema.push(newCat);
+      localStorage.setItem('active_dashboard', JSON.stringify(activeDashboard));
+      renderMainForm();
+
+    } else if (ai.action === 'add_widget' && ai.newWidget) {
+      if (!activeDashboard) return;
+
       let targetCat = activeDashboard.schema.find(c => c.title.toLowerCase().includes((ai.newWidget.targetCategoryTitle || '').toLowerCase()));
       if (!targetCat && activeDashboard.schema.length > 0) {
         targetCat = activeDashboard.schema[0];
-      } else if (!targetCat) {
-        targetCat = { id: 'cat_' + Date.now(), title: ai.newWidget.targetCategoryTitle || 'General', widgets: [] };
-        activeDashboard.schema.push(targetCat);
       }
 
       const w = ai.newWidget.widget || {};
@@ -1448,55 +1490,19 @@ Respond in plain text containing a valid JSON object. Do not include markdown co
         label: w.label || 'New Item',
         options: w.options || ['Good', 'Fair', 'Poor']
       };
-      targetCat.widgets.push(newWidget);
-      needsRerender = true;
-    }
 
-    if (needsRerender) {
+      if (targetCat) {
+        targetCat.widgets.push(newWidget);
+      } else {
+        activeDashboard.schema.push({
+          id: 'cat_' + Date.now(),
+          title: ai.newWidget.targetCategoryTitle || 'General',
+          widgets: [newWidget]
+        });
+      }
+
       localStorage.setItem('active_dashboard', JSON.stringify(activeDashboard));
       renderMainForm();
-    }
-
-    if (ai.logUpdates && activeDashboard) {
-      Object.entries(ai.logUpdates).forEach(([key, val]) => {
-        let field = document.getElementById(`field-${key}`);
-        if (!field) {
-          for (let cat of activeDashboard.schema) {
-            for (let w of cat.widgets) {
-              if (w.id === key || w.label.toLowerCase().includes(key.toLowerCase()) || key.toLowerCase().includes(w.label.toLowerCase())) {
-                field = document.getElementById(`field-${w.id}`);
-                break;
-              }
-            }
-            if (field) break;
-          }
-        }
-
-        if (field) {
-          if (field.type === 'checkbox') {
-            field.checked = Boolean(val);
-          } else if (field.type === 'range') {
-            field.value = val;
-            const badgeId = field.id.replace('field-', 'val-');
-            const badge = document.getElementById(badgeId);
-            if (badge) badge.innerText = `${val} / 10`;
-          } else {
-            field.value = val;
-          }
-        }
-      });
-    }
-
-    if (ai.summaryNotes) {
-      const notesEl = document.getElementById('entry-notes');
-      if (notesEl) notesEl.value = ai.summaryNotes;
-    }
-
-    if (ai.autoSubmitLog) {
-      setTimeout(() => {
-        const form = document.getElementById('tracker-form');
-        if (form) form.dispatchEvent(new Event('submit'));
-      }, 300);
     }
   }
 
@@ -2254,6 +2260,7 @@ Respond in plain text containing a valid JSON object. Do not include markdown co
 
     document.getElementById('entry-notes').value = '';
     renderHistoryTable();
+    alert("🎉 Daily log successfully submitted and saved!");
   });
 
   /* Active Dashboard History Table */
