@@ -44,7 +44,7 @@
 
     .hidden { display: none !important; }
 
-    /* Branding Header & Corner Logo Styling */
+    /* Branding Header & Corner Logo Styling with Fallbacks */
     .brand-header {
       text-align: center;
       margin-bottom: 20px;
@@ -65,6 +65,23 @@
       border-color: var(--accent-color);
     }
 
+    .brand-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, #1e293b, #0f172a);
+      border: 2px solid var(--accent-color);
+      padding: 12px 24px;
+      border-radius: 16px;
+      box-shadow: 0 4px 15px rgba(56, 189, 248, 0.2);
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+    .brand-badge:hover { transform: scale(1.02); }
+    .brand-badge span { font-size: 1.8rem; }
+    .brand-badge strong { font-size: 1.2rem; color: var(--accent-color); letter-spacing: 0.5px; }
+
     .corner-logo {
       height: 42px;
       width: auto;
@@ -73,9 +90,17 @@
       cursor: pointer;
       transition: transform 0.2s ease, border-color 0.2s ease;
     }
-    .corner-logo:hover {
-      transform: scale(1.05);
-      border-color: var(--accent-color);
+    .corner-logo:hover { transform: scale(1.05); border-color: var(--accent-color); }
+
+    .corner-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #1e293b;
+      border: 1px solid var(--border-color);
+      padding: 6px 12px;
+      border-radius: 8px;
+      cursor: pointer;
     }
 
     .screen-header-bar {
@@ -311,8 +336,11 @@
   <!-- ================= WELCOME / ONBOARDING SCREEN ================= -->
   <div id="onboarding-screen">
     <div class="brand-header">
-      <img src="logo.jpg" alt="BEARLY.xrhealth - Main Welcome Page" class="brand-logo" onclick="showScreen('onboarding-screen')" title="Return to Main Launch Page" onerror="this.style.display='none'">
-      <h2 style="color: var(--accent-color); margin: 0 0 4px 0;">BEARLY.xrhealth</h2>
+      <img src="logo.jpg" alt="BEARLY.xrhealth" class="brand-logo" onclick="showScreen('onboarding-screen')" title="Return to Main Welcome Page" onerror="this.style.display='none'; document.getElementById('fallback-main-logo').classList.remove('hidden');">
+      <div id="fallback-main-logo" class="hidden brand-badge" onclick="showScreen('onboarding-screen')">
+        <span>🐻‍❄️</span>
+        <strong>BEARLY.xrhealth</strong>
+      </div>
       <p style="color: var(--text-muted); margin: 0 0 16px 0; font-size: 0.85rem; font-style: italic;">A Personal Case Study by Bearadactyle</p>
     </div>
 
@@ -371,7 +399,11 @@
   <!-- ================= ABOUT PAGE ================= -->
   <div id="about-screen" class="hidden">
     <div class="screen-header-bar">
-      <img src="logo.jpg" alt="BEARLY.xrhealth" class="corner-logo" onclick="showScreen('onboarding-screen')" title="Return to Main Welcome Page" onerror="this.style.display='none'">
+      <img src="logo.jpg" alt="BEARLY" class="corner-logo" onclick="showScreen('onboarding-screen')" title="Return to Main Welcome Page" onerror="this.style.display='none'; document.getElementById('fallback-about-logo').classList.remove('hidden');">
+      <div id="fallback-about-logo" class="hidden corner-badge" onclick="showScreen('onboarding-screen')" title="Return to Main Welcome Page">
+        <span>🐻‍❄️</span>
+        <strong style="color:var(--accent-color); font-size:0.8rem;">BEARLY</strong>
+      </div>
       <div style="text-align: right;">
         <h2 style="color: var(--accent-color); margin: 0;">About BEARLY.xrhealth</h2>
         <span style="font-size: 0.75rem; color: var(--text-muted); italic;">A Personal Case Study by Bearadactyle</span>
@@ -399,7 +431,11 @@
   <!-- ================= UNIVERSAL MASTER LOG VIEW ================= -->
   <div id="universal-log-screen" class="hidden">
     <div class="screen-header-bar">
-      <img src="logo.jpg" alt="BEARLY.xrhealth" class="corner-logo" onclick="showScreen('onboarding-screen')" title="Return to Main Welcome Page" onerror="this.style.display='none'">
+      <img src="logo.jpg" alt="BEARLY" class="corner-logo" onclick="showScreen('onboarding-screen')" title="Return to Main Welcome Page" onerror="this.style.display='none'; document.getElementById('fallback-univ-logo').classList.remove('hidden');">
+      <div id="fallback-univ-logo" class="hidden corner-badge" onclick="showScreen('onboarding-screen')" title="Return to Main Welcome Page">
+        <span>🐻‍❄️</span>
+        <strong style="color:var(--accent-color); font-size:0.8rem;">BEARLY</strong>
+      </div>
       <div style="text-align: right;">
         <h2 style="color: var(--accent-color); margin: 0;">🌐 Master Universal Log</h2>
         <span style="font-size: 0.75rem; color: var(--text-muted);">Combined history across shared dashboards</span>
@@ -443,9 +479,13 @@
   <!-- ================= INDIVIDUAL LOGS VIEW ================= -->
   <div id="private-log-screen" class="hidden">
     <div class="screen-header-bar">
-      <img src="logo.jpg" alt="BEARLY.xrhealth" class="corner-logo" onclick="showScreen('onboarding-screen')" title="Return to Main Welcome Page" onerror="this.style.display='none'">
+      <img src="logo.jpg" alt="BEARLY" class="corner-logo" onclick="showScreen('onboarding-screen')" title="Return to Main Welcome Page" onerror="this.style.display='none'; document.getElementById('fallback-priv-logo').classList.remove('hidden');">
+      <div id="fallback-priv-logo" class="hidden corner-badge" onclick="showScreen('onboarding-screen')" title="Return to Main Welcome Page">
+        <span>🐻‍❄️</span>
+        <strong style="color:var(--accent-color); font-size:0.8rem;">BEARLY</strong>
+      </div>
       <div style="text-align: right;">
-        <h2 style="color: var(--accent-color); margin: 0;">🔒 Individual Dashboard Logs</h2>
+        <h2 style="color: var(--accent-color); margin: 0;">🔒 Individual Logs</h2>
         <span style="font-size: 0.75rem; color: var(--text-muted);">View dedicated log histories by dashboard</span>
       </div>
     </div>
@@ -481,9 +521,13 @@
   <!-- ================= MAIN TRACKING DASHBOARD ================= -->
   <div id="main-screen" class="hidden">
     
-    <!-- Top Nav Bar with Clickable Corner Logo -->
+    <!-- Top Nav Bar with Clickable Corner Logo & Fallback -->
     <div class="nav-bar">
-      <img src="logo.jpg" alt="BEARLY.xrhealth - Main Launch Page" class="corner-logo" onclick="showScreen('onboarding-screen')" title="Return to Main Welcome Page" onerror="this.style.display='none'">
+      <img src="logo.jpg" alt="BEARLY" class="corner-logo" onclick="showScreen('onboarding-screen')" title="Return to Main Welcome Page" onerror="this.style.display='none'; document.getElementById('fallback-nav-logo').classList.remove('hidden');">
+      <div id="fallback-nav-logo" class="hidden corner-badge" onclick="showScreen('onboarding-screen')" title="Return to Main Welcome Page">
+        <span>🐻‍❄️</span>
+        <strong style="color:var(--accent-color); font-size:0.8rem;">BEARLY</strong>
+      </div>
       <button type="button" onclick="showScreen('onboarding-screen')">☰ Presets / Menu</button>
       <button type="button" class="primary" onclick="openAddModal()">+ Add Category Group</button>
       <button type="button" class="voice" onclick="toggleVoiceAssistant()">🎙️ Voice Assistant</button>
@@ -547,10 +591,14 @@
       <button type="button" class="btn-success" onclick="openUniversalLogView()">🌐 Universal Log</button>
       <button type="button" class="primary" onclick="openPrivateLogView()">🔒 Individual Logs</button>
       <button type="button" class="btn-success" onclick="openWifiSyncModal()">📶 Wi-Fi Sync</button>
-      <button type="button" onclick="showScreen('about-screen')">ℹ️ About</button>
       <button type="button" onclick="backupDataJSON()">📤 Backup Data</button>
       <button type="button" onclick="document.getElementById('json-restore-input').click()">📥 Restore Data</button>
       <button type="button" onclick="refreshApp()">🔄 Refresh</button>
+    </div>
+
+    <!-- Dedicated Quick-Access About Section -->
+    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color); text-align: center;">
+      <button type="button" onclick="showScreen('about-screen')" style="width: 100%; background: #1e293b; border: 1px solid var(--border-color); color: var(--accent-color); padding: 10px; font-weight: 600;">ℹ️ About BEARLY.xrhealth</button>
     </div>
 
     <!-- Real-Time Data History Table -->
@@ -602,7 +650,7 @@
     <!-- OPTION B: CLIENT (RECEIVE DATA) -->
     <div style="background:#0f172a; padding:14px; border-radius:8px; border:1px solid var(--border-color);">
       <strong>2. Receive Data On This Device</strong>
-      <p style="font-size:0.8rem; color:var(--text-muted); margin:4px 0 10px 0;">Enter the 4-digit sync code displayed on your other device.</p>
+      <p style="font-size:0.8rem; color:var(--text-muted); margin:4px 0 10px 0;">Enter the 4-digit code displayed on your other device.</p>
       
       <div style="display:flex; gap:8px; margin-bottom:8px;">
         <input type="text" id="sync-code-input" placeholder="Enter 4-digit code (e.g. 8492)" maxlength="4" style="font-size:1.1rem; text-align:center; font-weight:bold;">
