@@ -1,0 +1,2258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BEARLY.xrhealth | Baseline Tracker</title>
+  
+  <!-- PeerJS WebRTC Library for Direct Local Wi-Fi Device Sync -->
+  <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: rgba(30, 41, 59, 0.90);
+      --accent-color: #38bdf8;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: #334155;
+      --danger-color: #ef4444;
+      --success-color: #10b981;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      margin: 0;
+      padding: 16px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 680px;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      backdrop-filter: blur(12px);
+      position: relative;
+    }
+
+    .hidden { display: none !important; }
+
+    /* Branding Header & Corner Logo Styling */
+    .brand-header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .brand-logo {
+      max-width: 220px;
+      width: 100%;
+      height: auto;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+    .brand-logo:hover {
+      transform: scale(1.02);
+      border-color: var(--accent-color);
+    }
+
+    .corner-logo {
+      height: 42px;
+      width: auto;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      cursor: pointer;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+    .corner-logo:hover {
+      transform: scale(1.05);
+      border-color: var(--accent-color);
+    }
+
+    .screen-header-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    /* Onboarding Cards */
+    .preset-card {
+      background: #1e293b;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease-in-out;
+    }
+    .preset-card:hover { border-color: var(--accent-color); transform: translateY(-2px); }
+
+    /* Category Cards */
+    .category-card {
+      background: #1e293b;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    .category-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 10px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .cat-actions {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .cat-drag-handle {
+      cursor: grab;
+      font-size: 0.85rem;
+      background: #334155;
+      padding: 4px 10px;
+      border-radius: 6px;
+      color: var(--accent-color);
+      user-select: none;
+      font-weight: bold;
+    }
+
+    /* Sub-Widget Drag & Drop Container */
+    .widget-item {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(51, 65, 85, 0.6);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+      position: relative;
+    }
+    .widget-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .widget-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .sub-drag-handle {
+      cursor: grab;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      user-select: none;
+      padding: 2px 6px;
+      background: #0f172a;
+      border-radius: 4px;
+    }
+
+    /* Form Controls */
+    label { display: block; font-weight: 600; margin-bottom: 4px; }
+    input[type="range"] { width: 100%; accent-color: var(--accent-color); cursor: pointer; }
+    select, input[type="text"], textarea {
+      width: 100%;
+      padding: 10px;
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+
+    /* Slider Badges & Ticks */
+    .slider-value-badge {
+      background: var(--accent-color);
+      color: #0f172a;
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+    .range-ticks {
+      display: flex;
+      justify-content: space-between;
+      padding: 0 4px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Toolbars & Navigation */
+    .nav-bar, .bottom-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-color: var(--border-color);
+      border-style: solid;
+    }
+    .nav-bar { border-width: 0 0 1px 0; margin-bottom: 16px; }
+    .bottom-bar { border-width: 1px 0 0 0; margin-top: 24px; }
+
+    button {
+      background: #334155;
+      color: var(--text-main);
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.85rem;
+      transition: opacity 0.2s;
+    }
+    button:hover { opacity: 0.9; }
+    button.primary { background: var(--accent-color); color: #0f172a; }
+    button.voice { background: #8b5cf6; color: #ffffff; }
+    button.btn-danger { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
+    button.btn-success { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; }
+
+    /* Modal Overlay & Library Options */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    .modal-card {
+      background: #1e293b;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 24px;
+      width: 90%;
+      max-width: 540px;
+      max-height: 85vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+    }
+    .modal-header-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 12px;
+    }
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .sub-input-box {
+      margin-top: 6px;
+      margin-left: 26px;
+    }
+    .library-item {
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    /* About & Dashboard Card Styling */
+    .about-card {
+      background: #1e293b;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      line-height: 1.6;
+      font-size: 0.95rem;
+      margin-bottom: 20px;
+    }
+
+    .dash-banner {
+      background: #1e293b;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    /* Data Table */
+    .history-section { margin-top: 24px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 10px; }
+    th, td { border: 1px solid var(--border-color); padding: 8px; text-align: left; }
+    th { background: #0f172a; }
+  </style>
+</head>
+<body>
+
+<!-- Hidden File Input for Data Restore -->
+<input type="file" id="json-restore-input" accept=".json" class="hidden" onchange="restoreDataJSON(event)">
+
+<div class="app-container">
+
+  <!-- ================= WELCOME / ONBOARDING SCREEN ================= -->
+  <div id="onboarding-screen">
+    <div class="brand-header">
+      <img src="logo.jpg" alt="BEARLY.xrhealth - Main Welcome Page" class="brand-logo" onclick="showScreen('onboarding-screen')" title="Return to Main Launch Page" onerror="this.style.display='none'">
+      <h2 style="color: var(--accent-color); margin: 0 0 4px 0;">BEARLY.xrhealth</h2>
+      <p style="color: var(--text-muted); margin: 0 0 16px 0; font-size: 0.85rem; font-style: italic;">A Personal Case Study by Bearadactyle</p>
+    </div>
+
+    <p style="color: var(--text-main); margin-bottom: 8px; font-size: 0.95rem; text-align: center;">
+      Welcome! Choose a preset dashboard, load a saved dashboard, or build your own custom setup.
+    </p>
+
+    <p style="color: var(--accent-color); margin-bottom: 20px; font-size: 0.85rem; text-align: center; font-weight: 500;">
+      ✨ Open source project for personal health baselines.
+    </p>
+
+    <!-- SAVED DASHBOARDS SECTION -->
+    <div id="saved-dashboards-section" class="hidden" style="margin-bottom:24px;">
+      <h3 style="margin: 0 0 10px 0; font-size: 1rem; color: var(--accent-color);">📂 Your Saved Dashboards</h3>
+      <div id="saved-dashboards-list"></div>
+    </div>
+
+    <!-- PRESETS SECTION -->
+    <h3 style="margin: 0 0 10px 0; font-size: 1rem; color: var(--text-muted);">🚀 Starter Presets</h3>
+
+    <div class="preset-card" onclick="loadPreset('as')">
+      <strong>🦴 Ankylosing Spondylitis & Spinal Health</strong>
+      <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--text-muted);">Spinal stiffness, joint pain, sleep quality, and stretch tracking.</p>
+    </div>
+
+    <div class="preset-card" onclick="loadPreset('adhd')">
+      <strong>🧠 ADHD & Executive Function</strong>
+      <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--text-muted);">Brain fog, sensory overload, medication switches, and context notes.</p>
+    </div>
+
+    <div class="preset-card" onclick="createCustomNamedPreset()">
+      <strong>✏️ Build From Scratch (Custom)</strong>
+      <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--text-muted);">Name your own custom dashboard and add drag-and-drop category groups.</p>
+    </div>
+
+    <div style="margin-top: 24px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center;">
+      <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+        <button type="button" class="btn-success" onclick="openUniversalLogView()">🌐 Universal Log</button>
+        <button type="button" class="primary" onclick="openPrivateLogView()">🔒 Individual Logs</button>
+      </div>
+      <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+        <button type="button" onclick="if(activeDashboard) showScreen('main-screen')">← Active App</button>
+        <button type="button" onclick="showScreen('about-screen')">ℹ️ About This Project</button>
+      </div>
+    </div>
+
+    <!-- Backup, Sync, and Factory Reset Controls -->
+    <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-color); display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+      <button type="button" class="btn-success" onclick="openWifiSyncModal()">📶 Local Wi-Fi Sync</button>
+      <button type="button" onclick="backupDataJSON()" title="Export full backup file to sync to other devices">📤 Backup Data</button>
+      <button type="button" onclick="document.getElementById('json-restore-input').click()" title="Import backup file from another device">📥 Restore Data</button>
+      <button type="button" class="btn-danger" onclick="factoryResetApp()" title="Wipe all app data and start 100% fresh">⚠️ Clear All Data</button>
+    </div>
+  </div>
+
+  <!-- ================= ABOUT PAGE ================= -->
+  <div id="about-screen" class="hidden">
+    <div class="screen-header-bar">
+      <img src="logo.jpg" alt="BEARLY.xrhealth" class="corner-logo" onclick="showScreen('onboarding-screen')" title="Return to Main Welcome Page" onerror="this.style.display='none'">
+      <div style="text-align: right;">
+        <h2 style="color: var(--accent-color); margin: 0;">About BEARLY.xrhealth</h2>
+        <span style="font-size: 0.75rem; color: var(--text-muted); italic;">A Personal Case Study by Bearadactyle</span>
+      </div>
+    </div>
+
+    <div class="about-card">
+      <p style="margin-top:0;">
+        <strong>BEARLY.xrhealth</strong> was designed by <strong>Bearadactyle</strong> as a personal case study and logging system to navigate my own health journey. Living with chronic health challenges requires consistency, low-friction tracking, and clear personal baselines over time.
+      </p>
+      <p>
+        While built to serve my specific daily logging needs, I wanted this to be a tool that anyone can use to empower themselves in their own personal health journeys.
+      </p>
+      <p>
+        My passion is driven by wanting to help people get a good, clear scope on where their health stands without paywalls, subscription fees, or locked features. This is a completely free, local-first, privacy-focused open source project designed to be accessible on smartphones, desktops, smart glasses, and XR headsets.
+      </p>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 16px;">
+      <button type="button" onclick="showScreen('onboarding-screen')">← Back to Menu</button>
+      <button type="button" class="primary" onclick="if(activeDashboard) showScreen('main-screen')">Go to Dashboard →</button>
+    </div>
+  </div>
+
+  <!-- ================= UNIVERSAL MASTER LOG VIEW ================= -->
+  <div id="universal-log-screen" class="hidden">
+    <div class="screen-header-bar">
+      <img src="logo.jpg" alt="BEARLY.xrhealth" class="corner-logo" onclick="showScreen('onboarding-screen')" title="Return to Main Welcome Page" onerror="this.style.display='none'">
+      <div style="text-align: right;">
+        <h2 style="color: var(--accent-color); margin: 0;">🌐 Master Universal Log</h2>
+        <span style="font-size: 0.75rem; color: var(--text-muted);">Combined history across shared dashboards</span>
+      </div>
+    </div>
+
+    <!-- Individual Log Selection Checkboxes -->
+    <div style="background:#1e293b; padding:12px 16px; border-radius:10px; border:1px solid var(--border-color); margin-bottom:16px; width:100%; box-sizing:border-box; text-align:left;">
+      <label style="color: var(--accent-color); font-size:0.85rem; font-weight:600; margin-bottom:8px; display:block;">
+        Toggle Individual Dashboard Logs to Include in Master View:
+      </label>
+      <div id="universal-log-toggles" style="display:flex; flex-wrap:wrap; gap:8px; max-height:130px; overflow-y:auto; padding-top:4px;">
+        <!-- Checkbox Toggles Dynamically Injected Here -->
+      </div>
+    </div>
+
+    <div class="history-section" style="margin-top:0;">
+      <div style="overflow-x: auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Dashboard / Source</th>
+              <th>Logged Metrics</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="universal-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="bottom-bar">
+      <button type="button" onclick="exportCSV('universal')">📥 Export Master CSV</button>
+      <button type="button" class="btn-danger" onclick="clearUniversalLogs()">🧹 Clear Universal Logs</button>
+      <button type="button" class="primary" onclick="openPrivateLogView()">🔒 View Individual Logs</button>
+      <button type="button" onclick="showScreen('onboarding-screen')">← Back to Menu</button>
+    </div>
+  </div>
+
+  <!-- ================= INDIVIDUAL LOGS VIEW ================= -->
+  <div id="private-log-screen" class="hidden">
+    <div class="screen-header-bar">
+      <img src="logo.jpg" alt="BEARLY.xrhealth" class="corner-logo" onclick="showScreen('onboarding-screen')" title="Return to Main Welcome Page" onerror="this.style.display='none'">
+      <div style="text-align: right;">
+        <h2 style="color: var(--accent-color); margin: 0;">🔒 Individual Dashboard Logs</h2>
+        <span style="font-size: 0.75rem; color: var(--text-muted);">View dedicated log histories by dashboard</span>
+      </div>
+    </div>
+
+    <div style="margin-bottom: 20px; background:#1e293b; padding:14px; border-radius:10px; border:1px solid var(--border-color);">
+      <label for="private-log-selector" style="color: var(--accent-color); margin-bottom:6px;">Select Individual Dashboard Log:</label>
+      <select id="private-log-selector" onchange="renderPrivateLogTable(this.value)"></select>
+    </div>
+
+    <div class="history-section" style="margin-top:0;">
+      <div style="overflow-x: auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Logged Metrics</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="private-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="bottom-bar">
+      <button type="button" onclick="exportCSV('private')">📥 Export Selected CSV</button>
+      <button type="button" class="btn-danger" onclick="clearCurrentIndividualLog()">🧹 Clear This Log</button>
+      <button type="button" class="btn-success" onclick="openUniversalLogView()">🌐 Universal Log</button>
+      <button type="button" onclick="showScreen('onboarding-screen')">← Back to Menu</button>
+    </div>
+  </div>
+
+  <!-- ================= MAIN TRACKING DASHBOARD ================= -->
+  <div id="main-screen" class="hidden">
+    
+    <!-- Top Nav Bar with Clickable Corner Logo -->
+    <div class="nav-bar">
+      <img src="logo.jpg" alt="BEARLY.xrhealth - Main Launch Page" class="corner-logo" onclick="showScreen('onboarding-screen')" title="Return to Main Welcome Page" onerror="this.style.display='none'">
+      <button type="button" onclick="showScreen('onboarding-screen')">☰ Presets / Menu</button>
+      <button type="button" class="primary" onclick="openAddModal()">+ Add Category Group</button>
+      <button type="button" class="voice" onclick="toggleVoiceAssistant()">🎙️ Voice Assistant</button>
+      <button type="button" onclick="refreshApp()">🔄 Refresh</button>
+    </div>
+
+    <!-- Active Dashboard Banner & Settings Bar -->
+    <div class="dash-banner">
+      <div>
+        <strong id="active-dash-title" style="color: var(--accent-color); font-size: 1.1rem;">Active Dashboard</strong>
+        <div id="active-dash-subtitle" style="font-size: 0.75rem; color: var(--text-muted);">Universal Master Logging Active</div>
+      </div>
+      <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+        <button type="button" id="btn-toggle-log-mode" onclick="toggleLogMode()" title="Switch between logging to Master Log or Individual Log">🌐 Mode: Universal Log</button>
+        <button type="button" class="btn-success" onclick="saveActiveDashboardToCards()" title="Save this full dashboard layout as a card on launch page">💾 Save Dashboard Card</button>
+      </div>
+    </div>
+
+    <!-- Voice Assistant Status & Control Panel -->
+    <div id="voice-panel" class="hidden" style="background:#2e1065; border:1px solid #7c3aed; padding:14px; border-radius:10px; margin-bottom:16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <strong>🎙️ Gemini AI Voice & Assistant Command</strong>
+        <span id="voice-indicator" style="color:#a78bfa; font-size:0.85rem;">● Ready</span>
+      </div>
+
+      <div style="margin-bottom:10px;">
+        <textarea id="voice-transcript-text" rows="2" placeholder="Speak or type a command... e.g. 'Set spinal stiffness to 7, check morning stretch, and log today' or 'Add a category for Ear Health'"></textarea>
+      </div>
+
+      <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:space-between; align-items:center;">
+        <div style="display:flex; gap:6px;">
+          <button type="button" class="voice" id="btn-listen-toggle" onclick="startSpeechRecognition()">🎙️ Start Listening</button>
+          <button type="button" class="primary" onclick="processVoiceCommand()">⚡ Process Command</button>
+        </div>
+        <span id="voice-status-msg" style="font-size:0.8rem; color:#d8b4fe;"></span>
+      </div>
+
+      <div style="margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.1); display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <label for="gemini-api-key-input" style="font-size:0.75rem; color:#ddd; margin:0;">Gemini API Key:</label>
+        <input type="text" id="gemini-api-key-input" placeholder="Paste Google Gemini API Key" style="flex-grow:1; padding:4px 8px; font-size:0.8rem; background:#1e1035; border:1px solid #7c3aed;">
+        <button type="button" onclick="saveApiKey()" style="padding:4px 8px; font-size:0.75rem;">Save Key</button>
+        <button type="button" class="btn-success" onclick="window.open('https://aistudio.google.com/', '_blank')" style="padding:4px 8px; font-size:0.75rem;">🔑 Need API Key?</button>
+      </div>
+    </div>
+
+    <!-- Dynamic Form with Editable Categories & Sub-Widgets -->
+    <form id="tracker-form">
+      <div id="dynamic-categories"></div>
+
+      <div style="margin-top:20px; margin-bottom: 20px;">
+        <label for="entry-notes">General Day Summary & Journal</label>
+        <textarea id="entry-notes" rows="2" placeholder="Overall notes, weather changes, energy summary..."></textarea>
+      </div>
+
+      <button type="submit" class="primary" style="width: 100%; font-size:1.05rem; padding:12px;">Log Today's Entry</button>
+    </form>
+
+    <!-- Bottom Actions Toolbar -->
+    <div class="bottom-bar">
+      <button type="button" onclick="exportCSV('active')">📥 Export Dashboard CSV</button>
+      <button type="button" class="btn-success" onclick="openUniversalLogView()">🌐 Universal Log</button>
+      <button type="button" class="primary" onclick="openPrivateLogView()">🔒 Individual Logs</button>
+      <button type="button" class="btn-success" onclick="openWifiSyncModal()">📶 Wi-Fi Sync</button>
+      <button type="button" onclick="showScreen('about-screen')">ℹ️ About</button>
+      <button type="button" onclick="backupDataJSON()">📤 Backup Data</button>
+      <button type="button" onclick="document.getElementById('json-restore-input').click()">📥 Restore Data</button>
+      <button type="button" onclick="refreshApp()">🔄 Refresh</button>
+    </div>
+
+    <!-- Real-Time Data History Table -->
+    <div class="history-section">
+      <h3 id="history-section-title">Your Logged Progress</h3>
+      <div style="overflow-x: auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Logged Metrics</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ================= LOCAL WI-FI DIRECT SYNC MODAL ================= -->
+<div id="wifi-sync-modal" class="modal-overlay hidden">
+  <div class="modal-card">
+    <div class="modal-header-actions">
+      <h3 style="margin:0; color:var(--accent-color);">📶 Local Wi-Fi Device Sync</h3>
+      <button type="button" onclick="closeWifiSyncModal()">✕ Close</button>
+    </div>
+
+    <p style="font-size:0.85rem; color:var(--text-muted); margin-top:0;">
+      Link your mobile device, XR/VR headset, desktop PC, smart glasses, or wearables directly across your home network. Data travels securely over Wi-Fi without hitting any external database.
+    </p>
+
+    <!-- OPTION A: HOST (SEND DATA) -->
+    <div style="background:#0f172a; padding:14px; border-radius:8px; border:1px solid var(--border-color); margin-bottom:16px;">
+      <strong>1. Send Data From This Device</strong>
+      <p style="font-size:0.8rem; color:var(--text-muted); margin:4px 0 10px 0;">Generate a temporary 4-digit code to broadcast your current app data.</p>
+      
+      <button type="button" class="btn-success" onclick="startWifiHost()">📡 Generate 4-Digit Sync Code</button>
+      
+      <div id="host-code-display" class="hidden" style="margin-top:10px; font-size:1.2rem; font-weight:bold; color:var(--accent-color); background:#1e293b; padding:10px; border-radius:6px; text-align:center;">
+        Sync Code: <span id="sync-code-number">----</span>
+      </div>
+      <div id="host-status-msg" style="font-size:0.8rem; color:var(--text-muted); margin-top:6px;"></div>
+    </div>
+
+    <!-- OPTION B: CLIENT (RECEIVE DATA) -->
+    <div style="background:#0f172a; padding:14px; border-radius:8px; border:1px solid var(--border-color);">
+      <strong>2. Receive Data On This Device</strong>
+      <p style="font-size:0.8rem; color:var(--text-muted); margin:4px 0 10px 0;">Enter the 4-digit sync code displayed on your other device.</p>
+      
+      <div style="display:flex; gap:8px; margin-bottom:8px;">
+        <input type="text" id="sync-code-input" placeholder="Enter 4-digit code (e.g. 8492)" maxlength="4" style="font-size:1.1rem; text-align:center; font-weight:bold;">
+        <button type="button" class="primary" onclick="connectWifiClient()" style="white-space:nowrap;">⚡ Connect & Sync</button>
+      </div>
+      <div id="client-status-msg" style="font-size:0.8rem; color:var(--text-muted);"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MULTI-WIDGET & CATEGORY LIBRARY MODAL ================= -->
+<div id="add-modal" class="modal-overlay hidden">
+  <div class="modal-card">
+    <div class="modal-header-actions">
+      <h3 style="margin:0;" id="modal-heading">Build Category Group</h3>
+      <button type="button" class="btn-success" id="btn-toggle-view" onclick="toggleModalView()">📚 Choose From Category Library</button>
+    </div>
+
+    <!-- VIEW 1: BUILD NEW GROUP -->
+    <div id="view-create">
+      <div style="margin-bottom:16px;">
+        <label for="category-title">Category Name / Area</label>
+        <input type="text" id="category-title" placeholder="e.g. Ankylosing Spondylitis, Ear Health, Sleep">
+      </div>
+
+      <label style="margin-bottom:6px; color:var(--accent-color);">Select New Widgets to Generate (Use Commas for Multiple):</label>
+
+      <div class="checkbox-group">
+        <input type="checkbox" id="chk-slider" checked onchange="toggleSubInput('sub-sliders', this.checked)">
+        <label for="chk-slider" style="margin:0;">1–10 Slider Scales</label>
+      </div>
+      <div class="sub-input-box" id="sub-sliders">
+        <input type="text" id="input-sliders" placeholder="Slider Labels (comma-separated): Spinal Stiffness, Joint Pain">
+      </div>
+
+      <div class="checkbox-group">
+        <input type="checkbox" id="chk-toggle" onchange="toggleSubInput('sub-toggles', this.checked)">
+        <label for="chk-toggle" style="margin:0;">Checkboxes / Switches</label>
+      </div>
+      <div class="sub-input-box hidden" id="sub-toggles">
+        <input type="text" id="input-toggles" placeholder="Checkbox Labels (comma-separated): Took Medicine, Did Stretches">
+      </div>
+
+      <div class="checkbox-group">
+        <input type="checkbox" id="chk-dropdown" onchange="toggleSubInput('sub-dropdowns', this.checked)">
+        <label for="chk-dropdown" style="margin:0;">Dropdown Menu</label>
+      </div>
+      <div class="sub-input-box hidden" id="sub-dropdowns">
+        <input type="text" id="input-dropdown-label" placeholder="Dropdown Label: e.g. Sleep Quality" style="margin-bottom:6px;">
+        <input type="text" id="input-dropdown-opts" placeholder="Options (comma-separated): Good, Fair, Poor">
+      </div>
+
+      <div class="checkbox-group">
+        <input type="checkbox" id="chk-notes" onchange="toggleSubInput('sub-notes', this.checked)">
+        <label for="chk-notes" style="margin:0;">Custom Note / Journal Boxes</label>
+      </div>
+      <div class="sub-input-box hidden" id="sub-notes">
+        <input type="text" id="input-notes" placeholder="Note Labels (comma-separated): Flare Notes, Diet Notes">
+      </div>
+
+      <!-- ATTACH FROM WIDGET LIBRARY SECTION -->
+      <div style="margin-top:20px; padding-top:14px; border-top:1px solid var(--border-color);">
+        <label style="color:var(--accent-color); margin-bottom:6px;">Attach Items from Your Saved Widget Library:</label>
+        <div id="modal-widget-library-picker" style="max-height:140px; overflow-y:auto; padding:8px; background:#0f172a; border:1px solid var(--border-color); border-radius:6px; margin-top:6px;">
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; margin-top: 24px;">
+        <button type="button" onclick="closeAddModal()">Cancel</button>
+        <button type="button" class="primary" onclick="saveCategoryGroup()">Save & Add Group</button>
+      </div>
+    </div>
+
+    <!-- VIEW 2: SAVED CATEGORY LIBRARY -->
+    <div id="view-library" class="hidden">
+      <p style="color:var(--text-muted); font-size:0.85rem; margin-top:0;">Import or customize saved category templates for your dashboard:</p>
+      <div id="library-list-container"></div>
+      
+      <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+        <button type="button" onclick="closeAddModal()">Close</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ================= ADD ITEM TO CATEGORY & WIDGET LIBRARY MODAL ================= -->
+<div id="add-item-modal" class="modal-overlay hidden">
+  <div class="modal-card">
+    <div class="modal-header-actions">
+      <h3 style="margin:0;" id="add-item-modal-title">➕ Add Item</h3>
+      <button type="button" class="btn-success" id="btn-toggle-widget-view" onclick="toggleItemModalView()">📚 Choose From Widget Library</button>
+    </div>
+
+    <!-- ITEM VIEW 1: CREATE NEW WIDGET ITEM -->
+    <div id="item-view-create">
+      <div style="margin-bottom:14px;">
+        <label for="item-label">Item Name / Label</label>
+        <input type="text" id="item-label" placeholder="e.g. Neck Stiffness, Morning Stretch, Ice Pack">
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <label for="item-type">Widget Type</label>
+        <select id="item-type" onchange="toggleItemDropdownOptions(this.value)">
+          <option value="slider">1–10 Slider Scale</option>
+          <option value="toggle">Checkbox / Switch (Yes/No)</option>
+          <option value="dropdown">Dropdown Menu</option>
+          <option value="textarea">Custom Note / Journal Box</option>
+        </select>
+      </div>
+
+      <div class="sub-input-box hidden" id="item-dropdown-box" style="margin-left:0; margin-bottom:14px;">
+        <label for="item-dropdown-opts">Dropdown Options (comma-separated)</label>
+        <input type="text" id="item-dropdown-opts" placeholder="Good, Fair, Severe">
+      </div>
+
+      <div style="display: flex; justify-content: space-between; margin-top: 20px;">
+        <button type="button" onclick="closeAddItemModal()">Cancel</button>
+        <button type="button" class="primary" onclick="saveItemToCategory()">Add Item to Category</button>
+      </div>
+    </div>
+
+    <!-- ITEM VIEW 2: SAVED WIDGET LIBRARY -->
+    <div id="item-view-library" class="hidden">
+      <p style="color:var(--text-muted); font-size:0.85rem; margin-top:0;">Import saved individual widgets into this category:</p>
+      <div id="widget-library-list-container"></div>
+      
+      <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+        <button type="button" onclick="closeAddItemModal()">Close</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const PRESETS = {
+    as: {
+      id: 'as_preset',
+      title: '🦴 Ankylosing Spondylitis & Spinal Health',
+      logMode: 'universal',
+      schema: [
+        {
+          id: 'cat_spine',
+          title: '🦴 Spinal Health & Stiffness',
+          widgets: [
+            { id: 'w_spine_stiff', type: 'slider', label: 'Spinal Stiffness' },
+            { id: 'w_joint_pain', type: 'slider', label: 'Peripheral Joint Pain' },
+            { id: 'w_flare_toggle', type: 'toggle', label: 'Active Swelling / Flare Today?' }
+          ]
+        },
+        {
+          id: 'cat_recovery',
+          title: '💤 Sleep & Mobility Routine',
+          widgets: [
+            { id: 'w_sleep_drop', type: 'dropdown', label: 'Sleep Quality', options: ['Good Rest', 'Fair / Restless', 'Severe Pain Interruption'] },
+            { id: 'w_stretch_toggle', type: 'toggle', label: 'Completed Morning Stretches?' },
+            { id: 'w_recovery_notes', type: 'textarea', label: 'Mobility Notes' }
+          ]
+        }
+      ]
+    },
+    adhd: {
+      id: 'adhd_preset',
+      title: '🧠 ADHD & Executive Function',
+      logMode: 'universal',
+      schema: [
+        {
+          id: 'cat_executive',
+          title: '🧠 Executive Function & Focus',
+          widgets: [
+            { id: 'w_fog', type: 'slider', label: 'Brain Fog Level' },
+            { id: 'w_sensory', type: 'slider', label: 'Sensory Overload' },
+            { id: 'w_meds', type: 'toggle', label: 'Medication Taken?' },
+            { id: 'w_adhd_notes', type: 'textarea', label: 'Focus & Trigger Notes' }
+          ]
+        }
+      ]
+    }
+  };
+
+  // Local Storage Data Structures
+  let activeDashboard = JSON.parse(localStorage.getItem('active_dashboard') || 'null');
+  let savedDashboards = JSON.parse(localStorage.getItem('saved_dashboards') || '[]');
+  let universalLogs = JSON.parse(localStorage.getItem('universal_logs') || '[]');
+
+  let savedLibrary = JSON.parse(localStorage.getItem('saved_library') || '[]');
+  let savedWidgetLibrary = JSON.parse(localStorage.getItem('saved_widget_library') || '[]');
+  
+  let currentModalView = 'create';
+  let currentItemModalView = 'create';
+  let targetCatForNewWidget = null;
+  let dragCatIndex = null;
+  let dragWidgetCatIndex = null;
+  let dragWidgetIndex = null;
+
+  // WebRTC PeerJS Wi-Fi Sync State
+  let peer = null;
+
+  // Speech Recognition Global State
+  let recognition = null;
+  let isListening = false;
+
+  window.onload = () => {
+    renderSavedDashboardsLauncher();
+    checkApiKeyPrompt();
+    if (activeDashboard) {
+      renderMainForm();
+      showScreen('main-screen');
+    }
+  };
+
+  function showScreen(screenId) {
+    document.getElementById('onboarding-screen').classList.add('hidden');
+    document.getElementById('main-screen').classList.add('hidden');
+    document.getElementById('about-screen').classList.add('hidden');
+    document.getElementById('universal-log-screen').classList.add('hidden');
+    document.getElementById('private-log-screen').classList.add('hidden');
+    document.getElementById(screenId).classList.remove('hidden');
+  }
+
+  /* Audio Feedback for Voice & Smart Glasses */
+  function speakConfirmation(text) {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel(); // Stop any overlapping speech
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+      window.speechSynthesis.speak(utterance);
+    }
+  }
+
+  /* Wi-Fi Peer-to-Peer Sync Modal & WebRTC Handlers */
+  function openWifiSyncModal() {
+    document.getElementById('wifi-sync-modal').classList.remove('hidden');
+    document.getElementById('host-code-display').classList.add('hidden');
+    document.getElementById('host-status-msg').innerText = '';
+    document.getElementById('client-status-msg').innerText = '';
+    document.getElementById('sync-code-input').value = '';
+  }
+
+  function closeWifiSyncModal() {
+    document.getElementById('wifi-sync-modal').classList.add('hidden');
+    if (peer) {
+      peer.destroy();
+      peer = null;
+    }
+  }
+
+  function generateFullBackupPayload() {
+    const backup = {
+      version: "1.0",
+      exportDate: new Date().toISOString(),
+      activeDashboard: activeDashboard,
+      savedDashboards: savedDashboards,
+      universalLogs: universalLogs,
+      savedLibrary: savedLibrary,
+      savedWidgetLibrary: savedWidgetLibrary,
+      isolatedLogs: {}
+    };
+
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('isolated_logs_')) {
+        backup.isolatedLogs[key] = JSON.parse(localStorage.getItem(key) || '[]');
+      }
+    }
+    return backup;
+  }
+
+  function startWifiHost() {
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    const peerId = `bearly-sync-${code}`;
+    const statusEl = document.getElementById('host-status-msg');
+
+    statusEl.innerText = "Connecting local transmitter...";
+
+    if (peer) peer.destroy();
+
+    peer = new Peer(peerId);
+
+    peer.on('open', () => {
+      document.getElementById('sync-code-number').innerText = code;
+      document.getElementById('host-code-display').classList.remove('hidden');
+      statusEl.innerText = "📡 Ready! Enter this 4-digit code on your receiving device.";
+    });
+
+    peer.on('connection', (conn) => {
+      statusEl.innerText = "⚡ Connected to device! Transmitting app data...";
+      conn.on('open', () => {
+        const payload = generateFullBackupPayload();
+        conn.send(payload);
+        statusEl.innerText = "✅ App data successfully sent over Wi-Fi!";
+      });
+    });
+
+    peer.on('error', (err) => {
+      console.error(err);
+      statusEl.innerText = "❌ Connection error. Please try generating a new code.";
+    });
+  }
+
+  function connectWifiClient() {
+    const codeInput = document.getElementById('sync-code-input').value.trim();
+    const statusEl = document.getElementById('client-status-msg');
+
+    if (!codeInput || codeInput.length !== 4) {
+      alert("Please enter a valid 4-digit sync code.");
+      return;
+    }
+
+    const targetPeerId = `bearly-sync-${codeInput}`;
+    statusEl.innerText = "Searching for host device on local network...";
+
+    if (peer) peer.destroy();
+
+    peer = new Peer();
+
+    peer.on('open', () => {
+      const conn = peer.connect(targetPeerId);
+
+      conn.on('open', () => {
+        statusEl.innerText = "⚡ Connected! Receiving data over Wi-Fi...";
+      });
+
+      conn.on('data', (backup) => {
+        statusEl.innerText = "✅ Data received! Applying updates...";
+        if (applyBackupPayload(backup)) {
+          alert("🎉 Wi-Fi Sync Complete! App data updated from your other device.");
+          location.reload();
+        }
+      });
+    });
+
+    peer.on('error', (err) => {
+      console.error(err);
+      statusEl.innerText = "❌ Could not find device with that code. Make sure both devices are on Wi-Fi.";
+    });
+  }
+
+  function applyBackupPayload(backup) {
+    try {
+      if (backup.activeDashboard) localStorage.setItem('active_dashboard', JSON.stringify(backup.activeDashboard));
+      if (backup.savedDashboards) localStorage.setItem('saved_dashboards', JSON.stringify(backup.savedDashboards));
+      if (backup.universalLogs) localStorage.setItem('universal_logs', JSON.stringify(backup.universalLogs));
+      if (backup.savedLibrary) localStorage.setItem('saved_library', JSON.stringify(backup.savedLibrary));
+      if (backup.savedWidgetLibrary) localStorage.setItem('saved_widget_library', JSON.stringify(backup.savedWidgetLibrary));
+      
+      if (backup.isolatedLogs) {
+        Object.keys(backup.isolatedLogs).forEach(key => {
+          localStorage.setItem(key, JSON.stringify(backup.isolatedLogs[key]));
+        });
+      }
+      return true;
+    } catch(e) {
+      console.error(e);
+      alert("Error parsing Wi-Fi payload data.");
+      return false;
+    }
+  }
+
+  /* Free Sync: Backup, Restore, and Full Factory Reset */
+  function backupDataJSON() {
+    if (!confirm("Are you sure you want to generate and download a full backup file of all your dashboards and logs?")) {
+      return;
+    }
+
+    const backup = generateFullBackupPayload();
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backup, null, 2));
+    const a = document.createElement('a');
+    a.href = dataStr;
+    a.download = `bearly_xrhealth_backup_${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+  }
+
+  function restoreDataJSON(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!confirm("Restoring from a backup will merge and update your existing dashboards and logs. Proceed?")) {
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const backup = JSON.parse(e.target.result);
+        if (applyBackupPayload(backup)) {
+          alert("Data successfully restored!");
+          location.reload();
+        }
+      } catch (err) {
+        alert("Error restoring backup: Invalid backup file format.");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function factoryResetApp() {
+    if (confirm("⚠️ WARNING: Are you sure you want to CLEAR ALL APP DATA?\n\nThis will permanently delete all saved dashboards, categories, widget libraries, and ALL logged history. This action cannot be undone!")) {
+      const confirmation = prompt("Type RESET in all caps below to confirm full app wipe:");
+      if (confirmation === "RESET") {
+        localStorage.clear();
+        alert("All app data has been cleared. Starting fresh...");
+        location.reload();
+      } else {
+        alert("Reset cancelled. Text did not match 'RESET'.");
+      }
+    }
+  }
+
+  /* Clear Specific Log Histories */
+  function clearUniversalLogs() {
+    if (universalLogs.length === 0) return alert("Master Universal Log is already empty.");
+    if (confirm("Are you sure you want to PERMANENTLY delete ALL entries in the Master Universal Log?")) {
+      universalLogs = [];
+      localStorage.setItem('universal_logs', JSON.stringify(universalLogs));
+      renderUniversalLogTable();
+      alert("Master Universal Log cleared.");
+    }
+  }
+
+  function clearCurrentIndividualLog() {
+    const select = document.getElementById('private-log-selector');
+    const dashId = select ? select.value : null;
+    if (!dashId) return alert("No individual dashboard log selected.");
+
+    let isolatedKey = `isolated_logs_${dashId}`;
+    let logs = JSON.parse(localStorage.getItem(isolatedKey) || '[]');
+    if (logs.length === 0) return alert("This individual log is already empty.");
+
+    if (confirm("Are you sure you want to PERMANENTLY delete all entries for this individual dashboard log?")) {
+      localStorage.removeItem(isolatedKey);
+      renderPrivateLogTable(dashId);
+      if (activeDashboard && activeDashboard.id === dashId && activeDashboard.logMode === 'isolated') {
+        renderHistoryTable();
+      }
+      alert("Individual log cleared.");
+    }
+  }
+
+  /* Custom Preset Creation */
+  function createCustomNamedPreset() {
+    const name = prompt('Enter a name for your new custom preset dashboard:', 'My Custom Health Tracker');
+    if (!name || !name.trim()) return;
+
+    activeDashboard = {
+      id: 'dash_' + Date.now(),
+      title: name.trim(),
+      logMode: 'universal',
+      schema: []
+    };
+
+    savedDashboards.push(JSON.parse(JSON.stringify(activeDashboard)));
+    localStorage.setItem('saved_dashboards', JSON.stringify(savedDashboards));
+    localStorage.setItem('active_dashboard', JSON.stringify(activeDashboard));
+
+    renderSavedDashboardsLauncher();
+    renderMainForm();
+    showScreen('main-screen');
+  }
+
+  /* Preset & Dashboard Loading */
+  function loadPreset(presetKey) {
+    const preset = PRESETS[presetKey];
+    const existing = savedDashboards.find(d => d.id === preset.id || d.title === preset.title);
+
+    if (existing) {
+      activeDashboard = JSON.parse(JSON.stringify(existing));
+    } else {
+      activeDashboard = {
+        id: preset.id || ('dash_' + Date.now()),
+        title: preset.title,
+        logMode: preset.logMode || 'universal',
+        schema: JSON.parse(JSON.stringify(preset.schema))
+      };
+    }
+
+    localStorage.setItem('active_dashboard', JSON.stringify(activeDashboard));
+    renderMainForm();
+    showScreen('main-screen');
+  }
+
+  function loadSavedDashboard(index) {
+    activeDashboard = JSON.parse(JSON.stringify(savedDashboards[index]));
+    localStorage.setItem('active_dashboard', JSON.stringify(activeDashboard));
+    renderMainForm();
+    showScreen('main-screen');
+  }
+
+  function saveActiveDashboardToCards() {
+    if (!activeDashboard) return;
+    const name = prompt('Enter or update title for this Dashboard Card on your launch page:', activeDashboard.title);
+    if (!name || !name.trim()) return;
+
+    activeDashboard.title = name.trim();
+    
+    const existingIndex = savedDashboards.findIndex(d => d.id === activeDashboard.id);
+    if (existingIndex >= 0) {
+      savedDashboards[existingIndex] = JSON.parse(JSON.stringify(activeDashboard));
+    } else {
+      savedDashboards.push(JSON.parse(JSON.stringify(activeDashboard)));
+    }
+
+    localStorage.setItem('saved_dashboards', JSON.stringify(savedDashboards));
+    localStorage.setItem('active_dashboard', JSON.stringify(activeDashboard));
+    renderSavedDashboardsLauncher();
+    renderMainForm();
+    alert(`Dashboard Card "${activeDashboard.title}" saved to launcher!`);
+  }
+
+  function deleteSavedDashboard(index) {
+    const dash = savedDashboards[index];
+    if (confirm(`Delete dashboard card "${dash.title}" from your launcher?`)) {
+      savedDashboards.splice(index, 1);
+      localStorage.setItem('saved_dashboards', JSON.stringify(savedDashboards));
+      renderSavedDashboardsLauncher();
+    }
+  }
+
+  function renderSavedDashboardsLauncher() {
+    const container = document.getElementById('saved-dashboards-list');
+    const section = document.getElementById('saved-dashboards-section');
+    container.innerHTML = '';
+
+    if (savedDashboards.length === 0) {
+      section.classList.add('hidden');
+      return;
+    }
+
+    section.classList.remove('hidden');
+    savedDashboards.forEach((dash, idx) => {
+      const card = document.createElement('div');
+      card.className = 'preset-card';
+      card.style.display = 'flex';
+      card.style.justifyContent = 'space-between';
+      card.style.alignItems = 'center';
+      
+      card.innerHTML = `
+        <div onclick="loadSavedDashboard(${idx})" style="flex-grow:1; cursor:pointer;">
+          <strong>📂 ${dash.title}</strong>
+          <p style="margin:2px 0 0 0; font-size:0.75rem; color:var(--text-muted);">
+            Mode: ${dash.logMode === 'isolated' ? '🔒 Individual Log' : '🌐 Universal Log'} | ${dash.schema.length} Categories
+          </p>
+        </div>
+        <button type="button" class="btn-danger" onclick="deleteSavedDashboard(${idx})" style="padding:4px 8px; font-size:0.75rem;">🗑️ Delete</button>
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  function toggleLogMode() {
+    if (!activeDashboard) return;
+    activeDashboard.logMode = (activeDashboard.logMode === 'isolated') ? 'universal' : 'isolated';
+
+    const existingIndex = savedDashboards.findIndex(d => d.id === activeDashboard.id);
+    if (existingIndex >= 0) {
+      savedDashboards[existingIndex].logMode = activeDashboard.logMode;
+      localStorage.setItem('saved_dashboards', JSON.stringify(savedDashboards));
+      renderSavedDashboardsLauncher();
+    }
+
+    localStorage.setItem('active_dashboard', JSON.stringify(activeDashboard));
+    renderMainForm();
+  }
+
+  /* Voice Assistant & Gemini AI Logic */
+  function toggleVoiceAssistant() {
+    const panel = document.getElementById('voice-panel');
+    panel.classList.toggle('hidden');
+
+    if (!panel.classList.contains('hidden')) {
+      checkApiKeyPrompt();
+    } else if (isListening) {
+      stopSpeechRecognition();
+    }
+  }
+
+  function checkApiKeyPrompt() {
+    const key = localStorage.getItem('gemini_api_key') || '';
+    document.getElementById('gemini-api-key-input').value = key;
+  }
+
+  function saveApiKey() {
+    const val = document.getElementById('gemini-api-key-input').value.trim();
+    localStorage.setItem('gemini_api_key', val);
+    alert(val ? 'Gemini API Key saved!' : 'API Key removed.');
+  }
+
+  function startSpeechRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Speech recognition is not available in this browser. You can type commands manually into the text field below!");
+      return;
+    }
+
+    if (isListening) {
+      stopSpeechRecognition();
+      return;
+    }
+
+    recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+      isListening = true;
+      document.getElementById('voice-indicator').innerText = '● Listening...';
+      document.getElementById('voice-indicator').style.color = '#10b981';
+      document.getElementById('btn-listen-toggle').innerText = '🛑 Stop Mic';
+    };
+
+    recognition.onresult = (event) => {
+      let transcript = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      document.getElementById('voice-transcript-text').value = transcript;
+    };
+
+    recognition.onerror = (e) => {
+      console.error("Speech Recognition Error", e);
+      stopSpeechRecognition();
+    };
+
+    recognition.onend = () => {
+      stopSpeechRecognition();
+    };
+
+    recognition.start();
+  }
+
+  function stopSpeechRecognition() {
+    isListening = false;
+    if (recognition) {
+      try { recognition.stop(); } catch(e){}
+    }
+    const ind = document.getElementById('voice-indicator');
+    if (ind) {
+      ind.innerText = '● Ready';
+      ind.style.color = '#a78bfa';
+    }
+    const btn = document.getElementById('btn-listen-toggle');
+    if (btn) btn.innerText = '🎙️ Start Listening';
+  }
+
+  async function processVoiceCommand() {
+    const apiKey = localStorage.getItem('gemini_api_key') || document.getElementById('gemini-api-key-input').value.trim();
+    if (!apiKey) {
+      alert("Please enter a Google Gemini API Key first to enable AI commands.");
+      return;
+    }
+
+    const commandText = document.getElementById('voice-transcript-text').value.trim();
+    if (!commandText) {
+      alert("Please speak or type a command first.");
+      return;
+    }
+
+    const statusEl = document.getElementById('voice-status-msg');
+    statusEl.innerText = "⚡ Thinking...";
+
+    const currentDashboardSchema = activeDashboard ? activeDashboard.schema : [];
+
+    const systemPrompt = `
+You are the AI Voice Assistant for BEARLY.xrhealth tracker app.
+Analyze the user's command and generate JSON instructions.
+
+Current Active Dashboard Title: "${activeDashboard ? activeDashboard.title : 'None'}"
+Current Dashboard Categories & Widgets Schema:
+${JSON.stringify(currentDashboardSchema, null, 2)}
+
+User's Spoken Command: "${commandText}"
+
+Instructions:
+1. Determine intent:
+   - "log_entry": Updates metric values, text notes, or submits log.
+   - "add_category": Creates a new category block with widgets.
+   - "add_widget": Adds a widget to an existing or new category.
+
+2. Smart Inference:
+   - If user doesn't specify widget type (e.g., "Track water intake"), choose best type:
+     * "slider": intensity or 1-10 levels
+     * "toggle": yes/no, medicine, stretches
+     * "dropdown": quality ratings (e.g. Good, Fair, Poor)
+     * "textarea": journal or notes
+
+Respond strictly in this JSON format:
+{
+  "action": "log_entry" | "add_category" | "add_widget",
+  "reply": "Short natural summary of what was completed",
+  "logUpdates": { "widget_id_str": "value" },
+  "summaryNotes": "General summary text if given",
+  "autoSubmitLog": boolean,
+  "newCategory": {
+    "title": "Category Name",
+    "widgets": [
+      { "type": "slider|toggle|dropdown|textarea", "label": "Label", "options": ["Good", "Fair", "Poor"] }
+    ]
+  },
+  "newWidget": {
+    "targetCategoryTitle": "Category Name",
+    "widget": { "type": "slider|toggle|dropdown|textarea", "label": "Label", "options": ["Good", "Fair", "Poor"] }
+  }
+}`;
+
+    try {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: systemPrompt }] }],
+          generationConfig: { responseMimeType: "application/json" }
+        })
+      });
+
+      if (!res.ok) throw new Error(`API Error: ${res.status}`);
+
+      const data = await res.json();
+      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!rawText) throw new Error("Empty response from AI.");
+
+      const aiResponse = JSON.parse(rawText);
+      const confirmationReply = aiResponse.reply || 'Command completed!';
+      
+      statusEl.innerText = `✅ ${confirmationReply}`;
+      
+      // Speak audio confirmation aloud for smart glasses & hands-free accessibility
+      speakConfirmation(confirmationReply);
+
+      executeAiAction(aiResponse);
+
+    } catch (err) {
+      console.error(err);
+      statusEl.innerText = `❌ Error processing request. Check your API key.`;
+      speakConfirmation("Sorry, I ran into an error processing that command.");
+    }
+  }
+
+  function executeAiAction(ai) {
+    if (!ai || !ai.action) return;
+
+    if (ai.action === 'log_entry') {
+      if (!activeDashboard) {
+        alert("Please select or load a dashboard before logging.");
+        return;
+      }
+
+      if (ai.logUpdates) {
+        Object.entries(ai.logUpdates).forEach(([widgetId, val]) => {
+          const field = document.getElementById(`field-${widgetId}`);
+          if (field) {
+            if (field.type === 'checkbox') {
+              field.checked = Boolean(val);
+            } else if (field.type === 'range') {
+              field.value = val;
+              const badge = document.getElementById(`val-${widgetId}`);
+              if (badge) badge.innerText = `${val} / 10`;
+            } else {
+              field.value = val;
+            }
+          }
+        });
+      }
+
+      if (ai.summaryNotes) {
+        const notesEl = document.getElementById('entry-notes');
+        if (notesEl) notesEl.value = ai.summaryNotes;
+      }
+
+      if (ai.autoSubmitLog) {
+        document.getElementById('tracker-form').dispatchEvent(new Event('submit'));
+      }
+
+    } else if (ai.action === 'add_category' && ai.newCategory) {
+      if (!activeDashboard) {
+        createCustomNamedPreset();
+      }
+
+      const newCat = {
+        id: 'cat_' + Date.now(),
+        title: ai.newCategory.title || 'New Category',
+        widgets: (ai.newCategory.widgets || []).map(w => ({
+          id: 'w_' + Date.now() + '_' + Math.random().toString(36).substr(2,4),
+          type: w.type || 'slider',
+          label: w.label || 'Metric',
+          options: w.options || ['Good', 'Fair', 'Poor']
+        }))
+      };
+
+      activeDashboard.schema.push(newCat);
+      localStorage.setItem('active_dashboard', JSON.stringify(activeDashboard));
+      renderMainForm();
+
+    } else if (ai.action === 'add_widget' && ai.newWidget) {
+      if (!activeDashboard) return;
+
+      let targetCat = activeDashboard.schema.find(c => c.title.toLowerCase().includes((ai.newWidget.targetCategoryTitle || '').toLowerCase()));
+      if (!targetCat && activeDashboard.schema.length > 0) {
+        targetCat = activeDashboard.schema[0];
+      }
+
+      const w = ai.newWidget.widget || {};
+      const newWidget = {
+        id: 'w_' + Date.now() + '_' + Math.random().toString(36).substr(2,4),
+        type: w.type || 'slider',
+        label: w.label || 'New Item',
+        options: w.options || ['Good', 'Fair', 'Poor']
+      };
+
+      if (targetCat) {
+        targetCat.widgets.push(newWidget);
+      } else {
+        activeDashboard.schema.push({
+          id: 'cat_' + Date.now(),
+          title: ai.newWidget.targetCategoryTitle || 'General',
+          widgets: [newWidget]
+        });
+      }
+
+      localStorage.setItem('active_dashboard', JSON.stringify(activeDashboard));
+      renderMainForm();
+    }
+  }
+
+  /* Individual Log Selector & Viewer */
+  function openPrivateLogView() {
+    const select = document.getElementById('private-log-selector');
+    select.innerHTML = '';
+
+    let availableDashboards = [...savedDashboards];
+    if (activeDashboard && !availableDashboards.some(d => d.id === activeDashboard.id)) {
+      availableDashboards.push(activeDashboard);
+    }
+
+    if (availableDashboards.length === 0) {
+      Object.values(PRESETS).forEach(p => availableDashboards.push(p));
+    }
+
+    availableDashboards.forEach(dash => {
+      const opt = document.createElement('option');
+      opt.value = dash.id;
+      opt.innerText = dash.title;
+      select.appendChild(opt);
+    });
+
+    if (activeDashboard) {
+      select.value = activeDashboard.id;
+    }
+
+    renderPrivateLogTable(select.value);
+    showScreen('private-log-screen');
+  }
+
+  function renderPrivateLogTable(dashId) {
+    const tbody = document.getElementById('private-table-body');
+    tbody.innerHTML = '';
+
+    if (!dashId) {
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--text-muted);">No dashboard selected.</td></tr>';
+      return;
+    }
+
+    let isolatedKey = `isolated_logs_${dashId}`;
+    let logs = JSON.parse(localStorage.getItem(isolatedKey) || '[]');
+
+    if (logs.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--text-muted);">No individual logs recorded for this dashboard yet.</td></tr>';
+      return;
+    }
+
+    logs.forEach((log, index) => {
+      const row = document.createElement('tr');
+      const details = Object.entries(log)
+        .filter(([k]) => k !== 'timestamp' && k !== 'dashboard')
+        .map(([k, v]) => `<strong>${k}:</strong> ${v}`)
+        .join(' | ');
+
+      row.innerHTML = `
+        <td>${log.timestamp}</td>
+        <td>${details}</td>
+        <td><button type="button" class="btn-danger" style="padding:4px 8px; font-size:0.75rem;" onclick="deletePrivateLogEntry('${dashId}', ${index})">🗑️ Delete</button></td>
+      `;
+      tbody.appendChild(row);
+    });
+  }
+
+  function deletePrivateLogEntry(dashId, logIndex) {
+    if (confirm('Are you sure you want to delete this individual log entry?')) {
+      let isolatedKey = `isolated_logs_${dashId}`;
+      let logs = JSON.parse(localStorage.getItem(isolatedKey) || '[]');
+      logs.splice(logIndex, 1);
+      localStorage.setItem(isolatedKey, JSON.stringify(logs));
+      renderPrivateLogTable(dashId);
+      if (activeDashboard && activeDashboard.id === dashId && activeDashboard.logMode === 'isolated') {
+        renderHistoryTable();
+      }
+    }
+  }
+
+  /* Universal Master Log View Logic with Individual Toggles */
+  function openUniversalLogView() {
+    renderUniversalLogToggles();
+    renderUniversalLogTable();
+    showScreen('universal-log-screen');
+  }
+
+  function renderUniversalLogToggles() {
+    const container = document.getElementById('universal-log-toggles');
+    if (!container) return;
+
+    let availableDashboards = [...savedDashboards];
+    if (activeDashboard && !availableDashboards.some(d => d.id === activeDashboard.id)) {
+      availableDashboards.push(activeDashboard);
+    }
+
+    if (availableDashboards.length === 0) {
+      container.innerHTML = '<span style="color:var(--text-muted); font-size:0.8rem;">No individual dashboards created yet.</span>';
+      return;
+    }
+
+    const existingChecked = {};
+    container.querySelectorAll('input[type="checkbox"]').forEach(chk => {
+      existingChecked[chk.value] = chk.checked;
+    });
+
+    container.innerHTML = '';
+    availableDashboards.forEach(dash => {
+      const isChecked = existingChecked[dash.id] !== undefined ? existingChecked[dash.id] : false;
+      const div = document.createElement('div');
+      div.style.display = 'flex';
+      div.style.alignItems = 'center';
+      div.style.gap = '6px';
+      div.style.background = '#0f172a';
+      div.style.padding = '4px 10px';
+      div.style.borderRadius = '6px';
+      div.style.border = '1px solid var(--border-color)';
+
+      div.innerHTML = `
+        <input type="checkbox" id="chk-univ-dash-${dash.id}" value="${dash.id}" ${isChecked ? 'checked' : ''} onchange="renderUniversalLogTable()" style="accent-color:var(--accent-color); cursor:pointer;">
+        <label for="chk-univ-dash-${dash.id}" style="margin:0; font-size:0.8rem; cursor:pointer; font-weight:normal;">
+          🔒 ${dash.title}
+        </label>
+      `;
+      container.appendChild(div);
+    });
+  }
+
+  function getUniversalLogsToDisplay() {
+    let logsToDisplay = [];
+
+    universalLogs.forEach(log => {
+      logsToDisplay.push({ ...log, logSource: log.dashboard || 'Universal Master' });
+    });
+
+    const checkedBoxes = document.querySelectorAll('#universal-log-toggles input[type="checkbox"]:checked');
+    let allDashboards = [...savedDashboards];
+    if (activeDashboard && !allDashboards.some(d => d.id === activeDashboard.id)) {
+      allDashboards.push(activeDashboard);
+    }
+
+    checkedBoxes.forEach(chk => {
+      const dashId = chk.value;
+      const targetDash = allDashboards.find(d => d.id === dashId);
+      const title = targetDash ? targetDash.title : 'Individual Dashboard';
+      
+      let isolatedLogs = JSON.parse(localStorage.getItem(`isolated_logs_${dashId}`) || '[]');
+      isolatedLogs.forEach(log => {
+        logsToDisplay.push({ ...log, logSource: `Individual: ${title}` });
+      });
+    });
+
+    logsToDisplay.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    return logsToDisplay;
+  }
+
+  function renderUniversalLogTable() {
+    const tbody = document.getElementById('universal-table-body');
+    tbody.innerHTML = '';
+
+    const logsToDisplay = getUniversalLogsToDisplay();
+
+    if (logsToDisplay.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">No logs recorded for this selection yet.</td></tr>';
+      return;
+    }
+
+    logsToDisplay.forEach((log, index) => {
+      const row = document.createElement('tr');
+      const details = Object.entries(log)
+        .filter(([k]) => k !== 'timestamp' && k !== 'dashboard' && k !== 'logSource')
+        .map(([k, v]) => `<strong>${k}:</strong> ${v}`)
+        .join(' | ');
+
+      const sourceBadge = log.logSource.startsWith('Individual:') 
+        ? `<span style="color:#f87171; font-weight:600;">🔒 ${log.logSource}</span>`
+        : `<span style="color:var(--accent-color); font-weight:600;">🌐 ${log.logSource}</span>`;
+
+      row.innerHTML = `
+        <td>${log.timestamp}</td>
+        <td>${sourceBadge}</td>
+        <td>${details}</td>
+        <td><button type="button" class="btn-danger" style="padding:4px 8px; font-size:0.75rem;" onclick="deleteLogEntry(${index}, true)">🗑️ Delete</button></td>
+      `;
+      tbody.appendChild(row);
+    });
+  }
+
+  /* Modal Functions */
+  function openAddModal() {
+    setModalView('create');
+    document.getElementById('category-title').value = '';
+    document.getElementById('chk-slider').checked = true;
+    document.getElementById('chk-toggle').checked = false;
+    document.getElementById('chk-dropdown').checked = false;
+    document.getElementById('chk-notes').checked = false;
+    
+    document.getElementById('input-sliders').value = '';
+    document.getElementById('input-toggles').value = '';
+    document.getElementById('input-dropdown-label').value = '';
+    document.getElementById('input-dropdown-opts').value = '';
+    document.getElementById('input-notes').value = '';
+
+    toggleSubInput('sub-sliders', true);
+    toggleSubInput('sub-toggles', false);
+    toggleSubInput('sub-dropdowns', false);
+    toggleSubInput('sub-notes', false);
+
+    renderModalWidgetLibraryPicker();
+    document.getElementById('add-modal').classList.remove('hidden');
+  }
+
+  function closeAddModal() {
+    document.getElementById('add-modal').classList.add('hidden');
+  }
+
+  function renderModalWidgetLibraryPicker() {
+    const container = document.getElementById('modal-widget-library-picker');
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (savedWidgetLibrary.length === 0) {
+      container.innerHTML = '<span style="color:var(--text-muted); font-size:0.8rem;">No saved items in your Widget Library yet. Save widgets from your board to reuse them here!</span>';
+      return;
+    }
+
+    savedWidgetLibrary.forEach((w, idx) => {
+      const div = document.createElement('div');
+      div.className = 'checkbox-group';
+      div.style.marginTop = '6px';
+      div.innerHTML = `
+        <input type="checkbox" id="lib-widget-${idx}" value="${idx}">
+        <label for="lib-widget-${idx}" style="margin:0; font-size:0.85rem; font-weight:normal;">
+          <strong>${w.label}</strong> <span style="color:var(--text-muted); font-size:0.75rem;">(${w.type})</span>
+        </label>
+      `;
+      container.appendChild(div);
+    });
+  }
+
+  /* Category Item Direct Add Modal */
+  function openAddItemModal(catIndex) {
+    targetCatForNewWidget = catIndex;
+    setItemModalView('create');
+    document.getElementById('add-item-modal-title').innerText = `➕ Add Item to "${activeDashboard.schema[catIndex].title}"`;
+    document.getElementById('item-label').value = '';
+    document.getElementById('item-type').value = 'slider';
+    document.getElementById('item-dropdown-opts').value = '';
+    document.getElementById('item-dropdown-box').classList.add('hidden');
+    document.getElementById('add-item-modal').classList.remove('hidden');
+  }
+
+  function closeAddItemModal() {
+    document.getElementById('add-item-modal').classList.add('hidden');
+    targetCatForNewWidget = null;
+  }
+
+  function toggleItemModalView() {
+    if (currentItemModalView === 'create') {
+      setItemModalView('library');
+    } else {
+      setItemModalView('create');
+    }
+  }
+
+  function setItemModalView(view) {
+    currentItemModalView = view;
+    if (view === 'create') {
+      document.getElementById('item-view-create').classList.remove('hidden');
+      document.getElementById('item-view-library').classList.add('hidden');
+      document.getElementById('btn-toggle-widget-view').innerText = '📚 Choose From Widget Library';
+    } else {
+      document.getElementById('item-view-create').classList.add('hidden');
+      document.getElementById('item-view-library').classList.remove('hidden');
+      document.getElementById('btn-toggle-widget-view').innerText = '✏️ Build New Widget';
+      renderWidgetLibraryList();
+    }
+  }
+
+  function toggleItemDropdownOptions(type) {
+    if (type === 'dropdown') {
+      document.getElementById('item-dropdown-box').classList.remove('hidden');
+    } else {
+      document.getElementById('item-dropdown-box').classList.add('hidden');
+    }
+  }
+
+  function saveItemToCategory() {
+    if (targetCatForNewWidget === null || !activeDashboard) return;
+    const label = document.getElementById('item-label').value.trim();
+    const type = document.getElementById('item-type').value;
+
+    if (!label) return alert('Please enter an item label.');
+
+    const newWidget = {
+      id: 'w_' + Date.now() + '_' + Math.random().toString(36).substr(2,4),
+      type: type,
+      label: label
+    };
+
+    if (type === 'dropdown') {
+      const rawOpts = document.getElementById('item-dropdown-opts').value.trim();
+      newWidget.options = rawOpts ? rawOpts.split(',').map(s => s.trim()).filter(Boolean) : ['Good', 'Fair', 'Poor'];
+    }
+
+    activeDashboard.schema[targetCatForNewWidget].widgets.push(newWidget);
+    localStorage.setItem('active_dashboard', JSON.stringify(activeDashboard));
+    renderMainForm();
+    closeAddItemModal();
+  }
+
+  function toggleModalView() {
+    if (currentModalView === 'create') {
+      setModalView('library');
+    } else {
+      setModalView('create');
+    }
+  }
+
+  function setModalView(view) {
+    currentModalView = view;
+    if (view === 'create') {
+      document.getElementById('view-create').classList.remove('hidden');
+      document.getElementById('view-library').classList.add('hidden');
+      document.getElementById('modal-heading').innerText = 'Build Category Group';
+      document.getElementById('btn-toggle-view').innerText = '📚 Choose From Category Library';
+    } else {
+      document.getElementById('view-create').classList.add('hidden');
+      document.getElementById('view-library').classList.remove('hidden');
+      document.getElementById('modal-heading').innerText = 'Category Library';
+      document.getElementById('btn-toggle-view').innerText = '✏️ Build New Group';
+      renderLibraryList();
+    }
+  }
+
+  function toggleSubInput(elementId, show) {
+    const el = document.getElementById(elementId);
+    if (show) el.classList.remove('hidden');
+    else el.classList.add('hidden');
+  }
+
+  function saveCategoryGroup() {
+    const title = document.getElementById('category-title').value.trim();
+    if (!title) return alert('Please enter a Category Name.');
+
+    const widgets = [];
+
+    if (document.getElementById('chk-slider').checked) {
+      const raw = document.getElementById('input-sliders').value.trim();
+      const labels = raw ? raw.split(',').map(s => s.trim()).filter(Boolean) : [title + ' Intensity'];
+      labels.forEach(lbl => {
+        widgets.push({ id: 'w_' + Date.now() + '_' + Math.random().toString(36).substr(2,4), type: 'slider', label: lbl });
+      });
+    }
+
+    if (document.getElementById('chk-toggle').checked) {
+      const raw = document.getElementById('input-toggles').value.trim();
+      const labels = raw ? raw.split(',').map(s => s.trim()).filter(Boolean) : ['Active / Present?'];
+      labels.forEach(lbl => {
+        widgets.push({ id: 'w_' + Date.now() + '_' + Math.random().toString(36).substr(2,4), type: 'toggle', label: lbl });
+      });
+    }
+
+    if (document.getElementById('chk-dropdown').checked) {
+      const dLabel = document.getElementById('input-dropdown-label').value.trim() || (title + ' Status');
+      const optsRaw = document.getElementById('input-dropdown-opts').value.trim();
+      const options = optsRaw ? optsRaw.split(',').map(s => s.trim()).filter(Boolean) : ['Good', 'Fair', 'Poor'];
+      widgets.push({ id: 'w_' + Date.now() + '_' + Math.random().toString(36).substr(2,4), type: 'dropdown', label: dLabel, options: options });
+    }
+
+    if (document.getElementById('chk-notes').checked) {
+      const raw = document.getElementById('input-notes').value.trim();
+      const labels = raw ? raw.split(',').map(s => s.trim()).filter(Boolean) : [title + ' Notes'];
+      labels.forEach(lbl => {
+        widgets.push({ id: 'w_' + Date.now() + '_' + Math.random().toString(36).substr(2,4), type: 'textarea', label: lbl });
+      });
+    }
+
+    savedWidgetLibrary.forEach((w, idx) => {
+      const chk = document.getElementById(`lib-widget-${idx}`);
+      if (chk && chk.checked) {
+        const clonedWidget = JSON.parse(JSON.stringify(w));
+        clonedWidget.id = 'w_' + Date.now() + '_' + Math.random().toString(36).substr(2,4);
+        widgets.push(clonedWidget);
+      }
+    });
+
+    if (widgets.length === 0) return alert('Select or check at least one widget to include in this group.');
+
+    activeDashboard.schema.push({
+      id: 'cat_' + Date.now(),
+      title: title,
+      widgets: widgets
+    });
+
+    localStorage.setItem('active_dashboard', JSON.stringify(activeDashboard));
+    renderMainForm();
+    closeAddModal();
+  }
+
+  /* Category Library Logic */
+  function saveCategoryToLibrary(catIndex) {
+    const catToSave = JSON.parse(JSON.stringify(activeDashboard.schema[catIndex]));
+    savedLibrary.push(catToSave);
+    localStorage.setItem('saved_library', JSON.stringify(savedLibrary));
+    alert(`Saved "${catToSave.title}" to your Category Library!`);
+  }
+
+  function renderLibraryList() {
+    const container = document.getElementById('library-list-container');
+    container.innerHTML = '';
+
+    if (savedLibrary.length === 0) {
+      container.innerHTML = '<p style="color:var(--text-muted);">No saved categories yet. Click "💾 Save" on any category header to add it here.</p>';
+      return;
+    }
+
+    savedLibrary.forEach((cat, index) => {
+      const item = document.createElement('div');
+      item.className = 'library-item';
+      item.innerHTML = `
+        <div>
+          <strong>${cat.title}</strong>
+          <div style="font-size:0.75rem; color:var(--text-muted);">${cat.widgets.length} items included</div>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button type="button" class="btn-success" onclick="importFromLibrary(${index})">⚡ Quick Add</button>
+          <button type="button" class="primary" onclick="customizeAndImportCategory(${index})">✏️ Customize & Add</button>
+          <button type="button" class="btn-danger" onclick="deleteFromLibrary(${index})">🗑️ Delete</button>
+        </div>
+      `;
+      container.appendChild(item);
+    });
+  }
+
+  function importFromLibrary(index) {
+    const clonedCat = JSON.parse(JSON.stringify(savedLibrary[index]));
+    clonedCat.id = 'cat_' + Date.now();
+    clonedCat.widgets.forEach(w => {
+      w.id = 'w_' + Date.now() + '_' + Math.random().toString(36).substr(2,4);
+    });
+
+    activeDashboard.schema.push(clonedCat);
+    localStorage.setItem('active_dashboard', JSON.stringify(activeDashboard));
+    renderMainForm();
+    closeAddModal();
+  }
+
+  function customizeAndImportCategory(index) {
+    const template = savedLibrary[index];
+    setModalView('create');
+    document.getElementById('category-title').value = template.title;
+    
+    document.getElementById('chk-slider').checked = false;
+    document.getElementById('chk-toggle').checked = false;
+    document.getElementById('chk-dropdown').checked = false;
+    document.getElementById('chk-notes').checked = false;
+    
+    toggleSubInput('sub-sliders', false);
+    toggleSubInput('sub-toggles', false);
+    toggleSubInput('sub-dropdowns', false);
+    toggleSubInput('sub-notes', false);
+
+    renderModalWidgetLibraryPicker();
+  }
+
+  function deleteFromLibrary(index) {
+    savedLibrary.splice(index, 1);
+    localStorage.setItem('saved_library', JSON.stringify(savedLibrary));
+    renderLibraryList();
+  }
+
+  /* Widget Library Logic */
+  function saveWidgetToLibrary(e, catIndex, widgetIndex) {
+    if (e) e.stopPropagation();
+    const widgetToSave = JSON.parse(JSON.stringify(activeDashboard.schema[catIndex].widgets[widgetIndex]));
+    savedWidgetLibrary.push(widgetToSave);
+    localStorage.setItem('saved_widget_library', JSON.stringify(savedWidgetLibrary));
+    alert(`Saved widget "${widgetToSave.label}" to your Widget Library!`);
+  }
+
+  function renderWidgetLibraryList() {
+    const container = document.getElementById('widget-library-list-container');
+    container.innerHTML = '';
+
+    if (savedWidgetLibrary.length === 0) {
+      container.innerHTML = '<p style="color:var(--text-muted); font-size:0.85rem;">No saved widgets yet. Click "💾 Save Widget" on any item on your dashboard to save it here.</p>';
+      return;
+    }
+
+    savedWidgetLibrary.forEach((w, index) => {
+      const item = document.createElement('div');
+      item.className = 'library-item';
+      item.innerHTML = `
+        <div>
+          <strong>${w.label}</strong>
+          <div style="font-size:0.75rem; color:var(--text-muted);">${w.type.toUpperCase()} widget</div>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button type="button" class="btn-success" onclick="importWidgetFromLibrary(${index})">+ Add to Category</button>
+          <button type="button" class="btn-danger" onclick="deleteFromWidgetLibrary(${index})">🗑️ Delete</button>
+        </div>
+      `;
+      container.appendChild(item);
+    });
+  }
+
+  function importWidgetFromLibrary(index) {
+    if (targetCatForNewWidget === null || !activeDashboard) return;
+    const clonedWidget = JSON.parse(JSON.stringify(savedWidgetLibrary[index]));
+    clonedWidget.id = 'w_' + Date.now() + '_' + Math.random().toString(36).substr(2,4);
+
+    activeDashboard.schema[targetCatForNewWidget].widgets.push(clonedWidget);
+    localStorage.setItem('active_dashboard', JSON.stringify(activeDashboard));
+    renderMainForm();
+    closeAddItemModal();
+  }
+
+  function deleteFromWidgetLibrary(index) {
+    savedWidgetLibrary.splice(index, 1);
+    localStorage.setItem('saved_widget_library', JSON.stringify(savedWidgetLibrary));
+    renderWidgetLibraryList();
+  }
+
+  /* Deletion Operations */
+  function deleteCategory(catIndex) {
+    const cat = activeDashboard.schema[catIndex];
+    if (!cat) return;
+    if (confirm(`Are you sure you want to delete the entire category "${cat.title}" and all its items?`)) {
+      activeDashboard.schema.splice(catIndex, 1);
+      localStorage.setItem('active_dashboard', JSON.stringify(activeDashboard));
+      renderMainForm();
+    }
+  }
+
+  function confirmDeleteWidget(e, catIndex, widgetIndex) {
+    if (e) e.stopPropagation();
+    const cat = activeDashboard.schema[catIndex];
+    if (!cat || !cat.widgets || !cat.widgets[widgetIndex]) return;
+    
+    const itemLabel = cat.widgets[widgetIndex].label || 'this item';
+    if (confirm(`Are you sure you want to delete "${itemLabel}" from ${cat.title}?`)) {
+      cat.widgets.splice(widgetIndex, 1);
+      localStorage.setItem('active_dashboard', JSON.stringify(activeDashboard));
+      renderMainForm();
+    }
+  }
+
+  function deleteLogEntry(logIndex, isUniversal = false) {
+    if (confirm('Are you sure you want to delete this logged entry?')) {
+      if (isUniversal || activeDashboard.logMode === 'universal') {
+        universalLogs.splice(logIndex, 1);
+        localStorage.setItem('universal_logs', JSON.stringify(universalLogs));
+      } else {
+        let isolatedKey = `isolated_logs_${activeDashboard.id}`;
+        let isolatedLogs = JSON.parse(localStorage.getItem(isolatedKey) || '[]');
+        isolatedLogs.splice(logIndex, 1);
+        localStorage.setItem(isolatedKey, JSON.stringify(isolatedLogs));
+      }
+      if (isUniversal) renderUniversalLogTable();
+      else renderHistoryTable();
+    }
+  }
+
+  /* Category Drag & Drop Handlers */
+  function handleCatDragStart(e, catIndex) {
+    dragCatIndex = catIndex;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('type', 'category');
+  }
+
+  function handleCatDragOver(e) {
+    if (e.preventDefault) e.preventDefault();
+    return false;
+  }
+
+  function handleCatDrop(e, targetCatIndex) {
+    if (e.stopPropagation) e.stopPropagation();
+    if (e.dataTransfer.getData('type') === 'category' && dragCatIndex !== null && dragCatIndex !== targetCatIndex) {
+      const moved = activeDashboard.schema.splice(dragCatIndex, 1)[0];
+      activeDashboard.schema.splice(targetCatIndex, 0, moved);
+      localStorage.setItem('active_dashboard', JSON.stringify(activeDashboard));
+      renderMainForm();
+    }
+    dragCatIndex = null;
+    return false;
+  }
+
+  /* Sub-Widget Drag & Drop Handlers */
+  function handleWidgetDragStart(e, catIndex, widgetIndex) {
+    e.stopPropagation();
+    dragWidgetCatIndex = catIndex;
+    dragWidgetIndex = widgetIndex;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('type', 'widget');
+  }
+
+  function handleWidgetDrop(e, catIndex, targetWidgetIndex) {
+    if (e.stopPropagation) e.stopPropagation();
+    if (e.dataTransfer.getData('type') === 'widget' && dragWidgetCatIndex === catIndex && dragWidgetIndex !== null && dragWidgetIndex !== targetWidgetIndex) {
+      const widgetsList = activeDashboard.schema[catIndex].widgets;
+      const moved = widgetsList.splice(dragWidgetIndex, 1)[0];
+      widgetsList.splice(targetWidgetIndex, 0, moved);
+      localStorage.setItem('active_dashboard', JSON.stringify(activeDashboard));
+      renderMainForm();
+    }
+    dragWidgetCatIndex = null;
+    dragWidgetIndex = null;
+    return false;
+  }
+
+  /* Render Main Form */
+  function renderMainForm() {
+    if (!activeDashboard) return;
+
+    document.getElementById('active-dash-title').innerText = activeDashboard.title;
+    const btnMode = document.getElementById('btn-toggle-log-mode');
+    const subTitle = document.getElementById('active-dash-subtitle');
+
+    if (activeDashboard.logMode === 'isolated') {
+      btnMode.innerText = '🔒 Mode: Individual Log';
+      btnMode.style.background = '#0284c7';
+      subTitle.innerText = 'Logging to Individual Board Log';
+      document.getElementById('history-section-title').innerText = `Your Logged Progress (${activeDashboard.title})`;
+    } else {
+      btnMode.innerText = '🌐 Mode: Universal Log';
+      btnMode.style.background = '#334155';
+      subTitle.innerText = 'Logging to Master Universal Log';
+      document.getElementById('history-section-title').innerText = 'Your Logged Progress (Universal Master Log)';
+    }
+
+    const container = document.getElementById('dynamic-categories');
+    container.innerHTML = '';
+
+    activeDashboard.schema.forEach((cat, catIndex) => {
+      const card = document.createElement('div');
+      card.className = 'category-card';
+      card.setAttribute('ondragover', 'handleCatDragOver(event)');
+      card.setAttribute('ondrop', `handleCatDrop(event, ${catIndex})`);
+
+      let widgetsHtml = '';
+      cat.widgets.forEach((w, wIndex) => {
+        let inputHtml = '';
+        if (w.type === 'slider') {
+          inputHtml = `
+            <div class="widget-header">
+              <label style="margin:0;">${w.label}</label>
+              <span class="slider-value-badge" id="val-${w.id}">5 / 10</span>
+            </div>
+            <input type="range" min="1" max="10" value="5" id="field-${w.id}" 
+                   oninput="document.getElementById('val-${w.id}').innerText = this.value + ' / 10'">
+            <div class="range-ticks">
+              <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+              <span>6</span><span>7</span><span>8</span><span>9</span><span>10</span>
+            </div>
+          `;
+        } else if (w.type === 'toggle') {
+          inputHtml = `<label style="margin:0;"><input type="checkbox" id="field-${w.id}"> ${w.label}</label>`;
+        } else if (w.type === 'dropdown') {
+          const opts = w.options.map(o => `<option value="${o}">${o}</option>`).join('');
+          inputHtml = `<label>${w.label}</label><select id="field-${w.id}">${opts}</select>`;
+        } else if (w.type === 'textarea') {
+          inputHtml = `<label>${w.label}</label><textarea id="field-${w.id}" rows="2" placeholder="Notes for ${w.label}..."></textarea>`;
+        }
+
+        widgetsHtml += `
+          <div class="widget-item" draggable="true" 
+               ondragstart="handleWidgetDragStart(event, ${catIndex}, ${wIndex})"
+               ondragover="handleCatDragOver(event)"
+               ondrop="handleWidgetDrop(event, ${catIndex}, ${wIndex})">
+            <div class="widget-header">
+              <span style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">Widget Item</span>
+              <div class="widget-actions">
+                <button type="button" class="btn-success" style="padding:3px 8px; font-size:0.75rem;" onclick="saveWidgetToLibrary(event, ${catIndex}, ${wIndex})" title="Save Widget to Library">💾 Save Widget</button>
+                <button type="button" class="btn-danger" style="padding:3px 8px; font-size:0.75rem;" onclick="confirmDeleteWidget(event, ${catIndex}, ${wIndex})" title="Delete item">🗑️ Delete</button>
+                <span class="sub-drag-handle" title="Click & drag to reorder">⋮⋮ Drag</span>
+              </div>
+            </div>
+            ${inputHtml}
+          </div>
+        `;
+      });
+
+      card.innerHTML = `
+        <div class="category-header">
+          <strong style="font-size: 1.05rem; color: var(--accent-color);">${cat.title}</strong>
+          <div class="cat-actions">
+            <button type="button" class="btn-success" onclick="openAddItemModal(${catIndex})" title="Add Item to Group">➕ Add Item</button>
+            <button type="button" class="btn-success" onclick="saveCategoryToLibrary(${catIndex})" title="Save Category to Library">💾 Save Category</button>
+            <button type="button" class="btn-danger" onclick="deleteCategory(${catIndex})" title="Delete Group">🗑️ Delete Group</button>
+            <span class="cat-drag-handle" draggable="true" ondragstart="handleCatDragStart(event, ${catIndex})">☰ Drag</span>
+          </div>
+        </div>
+        ${widgetsHtml}
+      `;
+
+      container.appendChild(card);
+    });
+
+    renderHistoryTable();
+  }
+
+  /* Form Submission */
+  document.getElementById('tracker-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (!activeDashboard) return;
+
+    const entry = {
+      timestamp: new Date().toLocaleString(),
+      dashboard: activeDashboard.title
+    };
+
+    activeDashboard.schema.forEach(cat => {
+      cat.widgets.forEach(w => {
+        const el = document.getElementById(`field-${w.id}`);
+        if (w.type === 'toggle') {
+          entry[`${cat.title} - ${w.label}`] = el.checked ? 'Yes' : 'No';
+        } else if (el) {
+          entry[`${cat.title} - ${w.label}`] = el.value;
+        }
+      });
+    });
+
+    entry['General Summary'] = document.getElementById('entry-notes').value;
+
+    if (activeDashboard.logMode === 'isolated') {
+      let isolatedKey = `isolated_logs_${activeDashboard.id}`;
+      let isolatedLogs = JSON.parse(localStorage.getItem(isolatedKey) || '[]');
+      isolatedLogs.unshift(entry);
+      localStorage.setItem(isolatedKey, JSON.stringify(isolatedLogs));
+    } else {
+      universalLogs.unshift(entry);
+      localStorage.setItem('universal_logs', JSON.stringify(universalLogs));
+    }
+
+    document.getElementById('entry-notes').value = '';
+    renderHistoryTable();
+  });
+
+  /* Active Dashboard History Table */
+  function renderHistoryTable() {
+    const tbody = document.getElementById('table-body');
+    tbody.innerHTML = '';
+
+    let logsToRender = [];
+    if (activeDashboard && activeDashboard.logMode === 'isolated') {
+      logsToRender = JSON.parse(localStorage.getItem(`isolated_logs_${activeDashboard.id}`) || '[]');
+    } else {
+      logsToRender = universalLogs;
+    }
+
+    if (logsToRender.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--text-muted);">No logs recorded in this mode yet.</td></tr>';
+      return;
+    }
+
+    logsToRender.forEach((log, index) => {
+      const row = document.createElement('tr');
+      const details = Object.entries(log)
+        .filter(([k]) => k !== 'timestamp' && k !== 'dashboard')
+        .map(([k, v]) => `<strong>${k}:</strong> ${v}`)
+        .join(' | ');
+
+      row.innerHTML = `
+        <td>${log.timestamp}</td>
+        <td>${details}</td>
+        <td><button type="button" class="btn-danger" style="padding:4px 8px; font-size:0.75rem;" onclick="deleteLogEntry(${index})">🗑️ Delete Entry</button></td>
+      `;
+      tbody.appendChild(row);
+    });
+  }
+
+  /* CSV Export Functionality with Download Confirmation */
+  function exportCSV(target = 'active') {
+    let logsToExport = [];
+    let filenamePrefix = 'health_baseline';
+
+    if (target === 'universal') {
+      logsToExport = getUniversalLogsToDisplay();
+      filenamePrefix = 'master_universal_health_logs';
+    } else if (target === 'private') {
+      const selectedDashId = document.getElementById('private-log-selector').value;
+      if (!selectedDashId) return alert('No individual log selected.');
+      logsToExport = JSON.parse(localStorage.getItem(`isolated_logs_${selectedDashId}`) || '[]');
+      filenamePrefix = `individual_log_${selectedDashId}`;
+    } else if (activeDashboard) {
+      if (activeDashboard.logMode === 'universal') {
+        logsToExport = universalLogs;
+      } else {
+        logsToExport = JSON.parse(localStorage.getItem(`isolated_logs_${activeDashboard.id}`) || '[]');
+      }
+      filenamePrefix = activeDashboard.title.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    }
+
+    if (logsToExport.length === 0) return alert('No logged data available to export for this selection.');
+
+    if (!confirm(`Are you sure you want to export and download ${logsToExport.length} logged entry/entries as a CSV file?`)) {
+      return;
+    }
+
+    const headers = Object.keys(logsToExport[0]);
+    const csvRows = [headers.join(',')];
+
+    logsToExport.forEach(row => {
+      const values = headers.map(h => `"${row[h] || ''}"`);
+      csvRows.push(values.join(','));
+    });
+
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filenamePrefix}_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+  }
+
+  function refreshApp() { location.reload(); }
+</script>
+</body>
+</html>
