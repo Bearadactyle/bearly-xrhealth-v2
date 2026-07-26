@@ -1351,7 +1351,7 @@ Instructions for Guided Wizard Mode:
 3. SAFETY CHECK: If ALL categories and widgets are now filled (or the user says "submit" / "log today"), you MUST ask for user confirmation first. Set "autoSubmitLog": false and say in "reply": "All categories are 100% complete! Do you want me to submit your daily log now?"
 4. If the user explicitly confirms with "yes" or "submit it", set "autoSubmitLog": true and say in "reply": "Submitting your daily log now!"
 
-Respond strictly in this JSON format:
+Respond strictly in valid JSON format. Do not include markdown code ticks like \`\`\`json. Return only the raw JSON object:
 {
   "reply": "Conversational response spoken aloud via text-to-speech to the user",
   "logUpdates": { "widget_id_or_label": "value" },
@@ -1370,7 +1370,6 @@ Respond strictly in this JSON format:
 }`;
 
     try {
-      // Using standard generative model endpoint URL format
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
       const res = await fetch(endpoint, {
         method: "POST",
@@ -1381,15 +1380,20 @@ Respond strictly in this JSON format:
         })
       });
 
-      if (!res.ok) throw new Error(`API Error: ${res.status}`);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(`API Error ${res.status}: ${errorData.error?.message || res.statusText}`);
+      }
 
       const data = await res.json();
       const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!rawText) throw new Error("Empty response from AI.");
 
-      const aiResponse = JSON.parse(rawText);
+      // Robustly clean markdown code ticks if any slip through
+      const cleanedText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+      const aiResponse = JSON.parse(cleanedText);
+
       const confirmationReply = aiResponse.reply || 'Command completed!';
-      
       statusEl.innerText = `✅ ${confirmationReply}`;
       speakConfirmation(confirmationReply);
 
@@ -1397,7 +1401,7 @@ Respond strictly in this JSON format:
 
     } catch (err) {
       console.error(err);
-      statusEl.innerText = `❌ Error processing request. Check your API key.`;
+      statusEl.innerText = `❌ Error: ${err.message}`;
       speakConfirmation("Sorry, I ran into an error processing that command.");
     }
   }
@@ -2221,14 +2225,14 @@ Respond strictly in this JSON format:
     };
 
     activeDashboard.schema.forEach(cat => {
-      cat.widgets.widgets?.forEach ? cat.widgets.forEach(w => {
+      cat.widgets.forEach(w => {
         const el = document.getElementById(`field-${w.id}`);
         if (w.type === 'toggle') {
           entry[`${cat.title} - ${w.label}`] = el && el.checked ? 'Yes' : 'No';
         } else if (el) {
           entry[`${cat.title} - ${w.label}`] = el.value;
         }
-      }) : null;
+      });
     });
 
     entry['General Summary'] = document.getElementById('entry-notes').value;
