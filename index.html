@@ -562,7 +562,7 @@
       </div>
 
       <div style="margin-bottom:10px;">
-        <textarea id="voice-transcript-text" rows="2" placeholder="Speak or type a command... e.g. 'Set spinal stiffness to 7, check morning stretch, and log today' or 'Add a category for Ear Health'"></textarea>
+        <textarea id="voice-transcript-text" rows="2" placeholder="Speak or type a command... e.g. 'Help me fill out my missing categories one by one'"></textarea>
       </div>
 
       <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:space-between; align-items:center;">
@@ -600,7 +600,7 @@
       <button type="button" class="primary" onclick="openPrivateLogView()">🔒 Individual Logs</button>
       <button type="button" class="btn-success" onclick="openWifiSyncModal()">📶 Wi-Fi Sync</button>
       <button type="button" onclick="backupDataJSON()">📤 Backup Data</button>
-      <button type="button" onclick="document.getElementById('json-restore-input').click()">📥 Restore Data</button>
+      <button type="button" onclick="document.getElementById('json-restore-input').click()" title="Import backup file from another device">📥 Restore Data</button>
       <button type="button" onclick="refreshApp()">🔄 Refresh</button>
     </div>
 
@@ -1251,7 +1251,7 @@
   function startSpeechRecognition() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert("Speech recognition requires a secure HTTPS connection on mobile browsers. Please open your live GitHub Pages link to use voice recognition.");
+      alert("Speech recognition is not available in this browser. You can type commands manually into the text field below!");
       return;
     }
 
@@ -1322,26 +1322,39 @@
     const statusEl = document.getElementById('voice-status-msg');
     statusEl.innerText = "⚡ Thinking...";
 
-    const currentDashboardSchema = activeDashboard ? activeDashboard.schema : [];
+    // Gather live form values to check completion status
+    const currentFormValues = {};
+    if (activeDashboard) {
+      activeDashboard.schema.forEach(cat => {
+        cat.widgets.forEach(w => {
+          const el = document.getElementById(`field-${w.id}`);
+          if (el) {
+            currentFormValues[w.label] = w.type === 'toggle' ? (el.checked ? 'Yes' : 'No') : el.value;
+          }
+        });
+      });
+    }
 
     const systemPrompt = `
-You are the AI Voice Assistant for BEARLY.xrhealth tracker app.
-Analyze the user's command and generate JSON instructions. You can handle multiple intents at once (e.g., creating a new widget AND logging values for it).
+You are the AI Health Assistant and Interviewer for BEARLY.xrhealth.
+Your job is to guide the user through completing their daily health log.
 
 Current Active Dashboard Title: "${activeDashboard ? activeDashboard.title : 'None'}"
-Current Dashboard Categories & Widgets Schema:
-${JSON.stringify(currentDashboardSchema, null, 2)}
+Current Dashboard Schema & Live Field Values:
+${JSON.stringify({ schema: activeDashboard ? activeDashboard.schema : [], currentValues: currentFormValues }, null, 2)}
 
-User's Spoken Command: "${commandText}"
+User's Spoken Command / Input: "${commandText}"
 
-Instructions:
-1. If the user wants to add a new category or widget, include "newCategory" or "newWidget".
-2. If the user provides values to track or log, include "logUpdates" (mapping widget IDs or labels to values) and set "autoSubmitLog": true if they want to log/submit today's entry.
-3. If they mention overall comments, include "summaryNotes".
+Instructions for Guided Wizard Mode:
+1. If the user asks to fill out missing categories or start their daily log, inspect "currentValues". Identify unfilled metrics and ask the user about the next item in the "reply" property.
+2. If the user provides values for metrics, update them in "logUpdates".
+3. SAFETY CHECK: If ALL categories and widgets are now filled (or the user says "submit" / "log today"), you MUST ask for user confirmation first. Set "autoSubmitLog": false and say in "reply": "All categories are 100% complete! Do you want me to submit your daily log now?"
+4. If the user explicitly confirms with "yes" or "submit it", set "autoSubmitLog": true and say in "reply": "Submitting your daily log now!"
 
 Respond strictly in this JSON format:
 {
-  "reply": "Short natural summary of what was completed",
+  "reply": "Conversational response spoken aloud via text-to-speech to the user",
+  "logUpdates": { "widget_id_or_label": "value" },
   "newCategory": {
     "title": "Category Name",
     "widgets": [
@@ -1352,9 +1365,8 @@ Respond strictly in this JSON format:
     "targetCategoryTitle": "Category Name",
     "widget": { "type": "slider|toggle|dropdown|textarea", "label": "Label", "options": ["Good", "Fair", "Poor"] }
   },
-  "logUpdates": { "widget_id_or_label": "value" },
-  "summaryNotes": "General summary text if given",
-  "autoSubmitLog": true
+  "summaryNotes": "General notes if given",
+  "autoSubmitLog": boolean
 }`;
 
     try {
@@ -1378,7 +1390,6 @@ Respond strictly in this JSON format:
       const confirmationReply = aiResponse.reply || 'Command completed!';
       
       statusEl.innerText = `✅ ${confirmationReply}`;
-      
       speakConfirmation(confirmationReply);
 
       executeAiAction(aiResponse);
@@ -1442,7 +1453,7 @@ Respond strictly in this JSON format:
         if (!field) {
           for (let cat of activeDashboard.schema) {
             for (let w of cat.widgets) {
-              if (w.label.toLowerCase().includes(key.toLowerCase()) || key.toLowerCase().includes(w.label.toLowerCase())) {
+              if (w.id === key || w.label.toLowerCase().includes(key.toLowerCase()) || key.toLowerCase().includes(w.label.toLowerCase())) {
                 field = document.getElementById(`field-${w.id}`);
                 break;
               }
@@ -1475,7 +1486,7 @@ Respond strictly in this JSON format:
       setTimeout(() => {
         const form = document.getElementById('tracker-form');
         if (form) form.dispatchEvent(new Event('submit'));
-      }, 200);
+      }, 300);
     }
   }
 
@@ -2233,6 +2244,7 @@ Respond strictly in this JSON format:
 
     document.getElementById('entry-notes').value = '';
     renderHistoryTable();
+    alert("🎉 Daily log successfully submitted and saved!");
   });
 
   /* Active Dashboard History Table */
